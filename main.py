@@ -39,10 +39,18 @@ def parse_args():
                 if int(sys.argv[2]) == 1:
                     mode[1] = 1
                     print("Color calibration mode, please place the balloon in the center of the frame until the program exits")
+                elif int(sys.argv[2]) == 2:
+                    print("Balloon detection color filter mode.")
+                    mode[1] = 2
+                elif int(sys.argv[2]) == 3:
+                    print("Balloon detection blob detection mode.")
+                    mode[1] = 3
                 else:
-                    print("Balloon detection mode.")
+                    print("Invalid mode, exiting!")
+                    sys.exit()
             else:
-                print("Balloon detection mode.")
+                print("Invalid mode, exiting!")
+                sys.exit()
     return mode
 
 
@@ -108,40 +116,19 @@ if __name__== "__main__":
         with open("colorinfo.dat", "wb") as file:
             pickle.dump(color_space, file)
             pickle.dump(hsl_channel_data_array, file)
-    else:
-        # detection mode
+        print("Calibration complete, colorinfo.dat file generated.")
+        sys.exit()
+
+    elif mode[1] == 2:
+        # detection mode using color filter
         # obtain the calibration file
         try:
             with open("colorinfo.dat", "rb") as file:
                 color = pickle.load(file)
                 n_channel_data = pickle.load(file)
-                print("Color space: ", color)
-                print("Color data: ", n_channel_data)
         except FileNotFoundError:
             print("Calibrate the color first!!!")
             sys.exit()
-
-        # TODO: compare to blob detection
-        params = cv2.SimpleBlobDetector_Params()
-
-        params.minThreshold = 10
-        params.maxThreshold = 220
-
-        params.filterByInertia = True
-        params.minInertiaRatio = 0.5
-
-        params.filterByArea = True
-        params.minArea = 500
-        params.maxArea = np.inf
-
-        params.filterByConvexity = True
-        params.minConvexity = 0.3
-
-        params.filterByCircularity = True
-        params.minCircularity = 0.6
-
-        params.filterByColor = True
-        params.blobColor = 255
 
         # allow the camera to warmup
         time.sleep(0.1)
@@ -161,12 +148,9 @@ if __name__== "__main__":
             lower = np.array([n_channel_data[0][0], n_channel_data[1][0], n_channel_data[2][0]])
             upper = np.array([n_channel_data[0][2], n_channel_data[1][2], n_channel_data[2][2]])
 
-            print(lower)
-            print(upper)
-
             mask = cv2.inRange(hlsframe, lower, upper)
             mask = cv2.erode(mask, None, iterations=5)
-            circleMask = np.zeros((int(mask_ROI_portion*frame.shape[1]), int(mask_ROI_portion*frame.shape[1])), np.uint8)
+            circleMask = np.zeros((int(mask_ROI_portion*frame.shape[1]), int(mask_ROI_portion*frame.shape[1])), dtype = np.uint8)
             cv2.circle(circleMask, (int(mask_ROI_portion*frame.shape[1]/2), int(mask_ROI_portion*frame.shape[1]/2)), int(mask_ROI_portion*frame.shape[1]/2), 1, -1)
             mask = cv2.dilate(mask, circleMask, iterations=3)
 
@@ -182,4 +166,118 @@ if __name__== "__main__":
             # show the frame
             cv2.imshow("Frame", frame)
             cv2.imshow("Mask", mask)
-            cv2.waitKey(1)
+            
+            if cv2.waitKey(33) == 27:
+                # De-allocate any associated memory usage
+                cv2.destroyAllWindows()
+                videoCapture.release()
+
+    elif mode[1] == 3:
+        # detection mode using blob detection
+        # obtain the calibration file
+        try:
+            with open("colorinfo.dat", "rb") as file:
+                color = pickle.load(file)
+                n_channel_data = pickle.load(file)
+                print("Color space: ", color)
+                print("Color data: ", n_channel_data)
+        except FileNotFoundError:
+            print("Calibrate the color first!!!")
+            sys.exit()
+        
+        # TODO: compare to blob detection
+        params = cv2.SimpleBlobDetector_Params()
+
+        params.minThreshold = 10
+        params.maxThreshold = 220
+
+        params.filterByInertia = True
+        params.minInertiaRatio = 0.6
+
+        params.filterByArea = True
+        params.minArea = 500
+        params.maxArea = np.inf
+
+        params.filterByConvexity = True
+        params.minConvexity = 0.4
+
+        params.filterByCircularity = True
+        params.minCircularity = 0.6
+
+        params.filterByColor = True
+        params.blobColor = 255
+
+        # Font to write text overlay
+        font = cv2.FONT_HERSHEY_SIMPLEX
+
+        # Constant for focal length, in pixels (must be changed per camera)
+        FOCAL_LENGTH = 1460
+        BALLOON_WIDTH = 0.33
+
+        # allow the camera to warmup
+        time.sleep(0.1)
+
+        # capture frames from the camera
+        while True:
+            # grab the raw NumPy array representing the image, then initialize the timestamp
+            # and occupied/unoccupied text
+            ret, frame = videoCapture.read()
+            if not ret:
+                print("Frame capture failed!!!")
+                break
+
+            detector = cv2.SimpleBlobDetector_create(params)
+
+            blurframe = cv2.blur(frame, (int(mask_ROI_portion*frame.shape[1]), int(mask_ROI_portion*frame.shape[1])))
+            hsvframe = cv2.cvtColor(blurframe, cv2.COLOR_BGR2HSV)
+
+            lower = 0.75 * np.array([n_channel_data[0][0], n_channel_data[1][0], n_channel_data[2][0]])
+            upper = 1.33 * np.array([n_channel_data[0][2], n_channel_data[1][2], n_channel_data[2][2]])
+
+            mask = cv2.inRange(hsvframe, lower, upper)
+            mask = cv2.erode(mask, None, iterations=5)
+            mask = cv2.dilate(mask, np.ones((int(mask_ROI_portion*frame.shape[1]/2), int(mask_ROI_portion*frame.shape[1]/2))), iterations=2)
+            mask = cv2.erode(mask, None, iterations=50)
+
+            box_width = 0
+            contours, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+            for pic, contour in enumerate(contours):
+                    area = cv2.contourArea(contour)
+                    if (area > 1000):
+                            x, y, w, h = cv2.boundingRect(contour) # create bonding box
+                            box_width = w
+                            center = x+(1/2)*w+(1/2)*h
+
+            # Detect blobs
+            keypoints = detector.detect(mask)
+
+            if len(keypoints) > 0:
+                print(keypoints[0].size)
+                if keypoints[0].size > 100:
+                    keypoints[0].size = keypoints[0].size - 30
+                # Get the number of blobs found
+                blobCount = len(keypoints)
+                print(blobCount, "found")
+                if box_width:
+                    p = box_width      # perceived width, in pixels
+                    w = BALLOON_WIDTH                # approx. actual width, in meters (pre-computed)
+                    f = FOCAL_LENGTH        # camera focal length, in pixels (pre-computed)
+                    d = f * w / p
+                    cv2.putText(frame, "Distance=%.3fm" % d, (5,100), font, 2, (0, 0, 255), 2)
+
+            blank = np.zeros((1, 1))
+
+            # Draw detected blobs as red circles
+            blobs = cv2.drawKeypoints(frame, keypoints, blank, (0, 0, 255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+
+            cv2.imshow('Blobs', blobs)
+            cv2.imshow('Mask', mask)
+
+            if cv2.waitKey(33) == 27:
+            # De-allocate any associated memory usage
+                cv2.destroyAllWindows()
+                videoCapture.release()
+
+    else:
+        print("Invalid mode!!!")
+        sys.exit()
