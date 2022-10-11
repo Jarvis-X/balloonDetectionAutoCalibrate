@@ -82,6 +82,8 @@ if __name__== "__main__":
 
         time_begin = time.time()
         frame_count = 0
+        videoCapture.read()
+        time.sleep(1)
         while time.time() - time_begin < 5:
             frame_count += 1
             ret, frame = videoCapture.read()
@@ -113,6 +115,8 @@ if __name__== "__main__":
             with open("colorinfo.dat", "rb") as file:
                 color = pickle.load(file)
                 n_channel_data = pickle.load(file)
+                print("Color space: ", color)
+                print("Color data: ", n_channel_data)
         except FileNotFoundError:
             print("Calibrate the color first!!!")
             sys.exit()
@@ -157,9 +161,14 @@ if __name__== "__main__":
             lower = np.array([n_channel_data[0][0], n_channel_data[1][0], n_channel_data[2][0]])
             upper = np.array([n_channel_data[0][2], n_channel_data[1][2], n_channel_data[2][2]])
 
+            print(lower)
+            print(upper)
+
             mask = cv2.inRange(hlsframe, lower, upper)
             mask = cv2.erode(mask, None, iterations=5)
-            mask = cv2.dilate(mask, np.ones((int(mask_ROI_portion*frame.shape[1]), int(mask_ROI_portion*frame.shape[1]))), iterations=3)
+            circleMask = np.zeros((int(mask_ROI_portion*frame.shape[1]), int(mask_ROI_portion*frame.shape[1])), np.uint8)
+            cv2.circle(circleMask, (int(mask_ROI_portion*frame.shape[1]/2), int(mask_ROI_portion*frame.shape[1]/2)), int(mask_ROI_portion*frame.shape[1]/2), 1, -1)
+            mask = cv2.dilate(mask, circleMask, iterations=3)
 
             contours, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
             for pic, contour in enumerate(contours):
