@@ -28,4 +28,4 @@ Type in your terminal: `python main.py cvcam 3` and let the camera see the objec
 - Distance and Direction extraction
   - Make these functionalities modular and compatible with both the color-based and blob detection
 - better filter for post-detection ~and in-detection~ 
-  - a new class file is created as a placeholder for this functionality. Play with it!
+  - a new class `TrackingDetection` is created as a placeholder for this functionality. Play with it!
