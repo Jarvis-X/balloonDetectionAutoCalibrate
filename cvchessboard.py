@@ -5,7 +5,7 @@ import glob
 import pickle
 import time
 
-NUM_SAMPLES = 20
+NUM_SAMPLES = 30
 
 def calibrate(n = NUM_SAMPLES, debug=False):
 	# some criteria for calibration cycles

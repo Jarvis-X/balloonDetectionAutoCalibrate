@@ -149,7 +149,6 @@ def preprocess_frame(frame, blur_kernel_size, blur_method="average", size=(640, 
     :param target_colorspace: "HLS", "HSV", "RGB", etc...
     :return: preprocessed_frame: the frame that is resized, blurred, and converted
     """
-    frame = cv2.resize(frame, size, interpolation=cv2.INTER_AREA)
     if blur_method not in ["Gaussian", "average"]:
         print("must select a blur method in", ["Gaussian", "average"])
         sys.exit(1)
@@ -273,13 +272,17 @@ if __name__ == "__main__":
             # grab the raw NumPy array representing the image, then initialize the timestamp
             # and occupied/unoccupied text
             ret, frame = videoCapture.read()
-            size = (640, 480)
-            frame = cv2.resize(frame, size, interpolation=cv2.INTER_AREA)
+
+            ratio = 600 / frame.shape[1]
+            dim = (600, int(frame.shape[0] * ratio))
+
+            frame = cv2.resize(frame, dim, interpolation=cv2.INTER_LINEAR)
+
             if not ret:
                 print("Frame capture failed!!!")
                 break
 
-            processed_frame = preprocess_frame(frame, mask_ROI_portion)
+            processed_frame = preprocess_frame(frame, mask_ROI_portion, size=frame.shape)
 
             lower = np.array([n_channel_data[0][0], n_channel_data[1][0], n_channel_data[2][0]])
             upper = np.array([n_channel_data[0][2], n_channel_data[1][2], n_channel_data[2][2]])
@@ -304,6 +307,7 @@ if __name__ == "__main__":
                 # De-allocate any associated memory usage
                 cv2.destroyAllWindows()
                 videoCapture.release()
+                break
 
     elif mode[1] == 3:
         # detection mode using blob detection
@@ -331,18 +335,17 @@ if __name__ == "__main__":
             # grab the raw NumPy array representing the image, then initialize the timestamp
             # and occupied/unoccupied text
             ret, frame = videoCapture.read()
-            size = (640, 480)
-            frame = cv2.resize(frame, size, interpolation=cv2.INTER_AREA)
+
+            ratio = 600 / frame.shape[1]
+            dim = (600, int(frame.shape[0] * ratio))
+
+            frame = cv2.resize(frame, dim, interpolation=cv2.INTER_LINEAR)
+
             if not ret:
                 print("Frame capture failed!!!")
                 break
 
-            scale_percent = 60 # percent of original size
-            width = int(frame.shape[1] * scale_percent / 100)
-            height = int(frame.shape[0] * scale_percent / 100)
-            dim = (width, height)
-
-            processed_frame = preprocess_frame(frame, mask_ROI_portion, size=dim)
+            processed_frame = preprocess_frame(frame, mask_ROI_portion, size=frame.shape)
 
             lower = 0.75 * np.array([n_channel_data[0][0], n_channel_data[1][0], n_channel_data[2][0]])
             upper = 1.33 * np.array([n_channel_data[0][2], n_channel_data[1][2], n_channel_data[2][2]])
@@ -358,7 +361,9 @@ if __name__ == "__main__":
             for bounding_rect in bounding_rects:
                 x, y, w, h = bounding_rect  # create bonding box
                 box_width = w
-                center = x + (1 / 2) * w + (1 / 2) * h
+                cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                center = (int(x + w / 2), int(y + h / 2))
+                frame = cv2.circle(frame, center, radius=0, color=(0, 0, 255), thickness=10)
 
             # Detect blobs
             keypoints = detector.detect(mask)
@@ -375,7 +380,7 @@ if __name__ == "__main__":
                     w = BALLOON_WIDTH  # approx. actual width, in meters (pre-computed)
                     f = FOCAL_LENGTH  # camera focal length, in pixels (pre-computed)
                     d = f * w / p
-                    cv2.putText(frame, "Distance=%.3fm" % d, (5, 100), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 255), 2)
+                    cv2.putText(frame, "Distance=%.3fm" % d, (5, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 1)
 
             blank = np.zeros((1, 1))
 
@@ -389,6 +394,7 @@ if __name__ == "__main__":
                 # De-allocate any associated memory usage
                 cv2.destroyAllWindows()
                 videoCapture.release()
+                break
 
     else:
         print("Invalid mode!!!")
