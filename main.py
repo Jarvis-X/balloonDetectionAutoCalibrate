@@ -25,13 +25,6 @@ def parse_args():
     else:
         if sys.argv[1] == "picam":
             print("picamera in progress, exiting!")
-            # TODO: fix picamera
-            # from picamera.array import PiRGBArray
-            # from picamera import PiCamera
-            # camera = PiCamera()
-            # camera.resolution = RES
-            # camera.framerate = 25
-            # rawCapture = PiRGBArray(camera, size=RES)
             mode[0] = 0
             sys.exit()
         else:
@@ -186,17 +179,41 @@ if __name__ == "__main__":
     mask_ROI_portion = 1 / 20
     mode = parse_args()
 
+    # initialize the pi camera or web camera and grab a reference to the raw camera capture
     if mode[0] == 0:
         # TODO: picamera imports
+        # import the necessary packages
+        from picamera.array import PiRGBArray
+        from queue import Queue
+        from picamera import PiCamera
+
+        FOCAL_LENGTH = 640
+        BALLOON_WIDTH = 0.33
+
+        RES = (640, 480) # esolution
+        camera = PiCamera()
+        camera.resolution = RES
+        camera.framerate = 30
+        rawCapture = PiRGBArray(camera, size=RES)
+        # Constant for focal length, in pixels
+        FOCAL_LENGTH = 630
+        # Costant for ballon width, in meters
+        BALLOON_WIDTH = 0.33
+
+        time.sleep(0.1)
         print("picamera support incoming")
         sys.exit()
         pass
+
     else:
+        FOCAL_LENGTH = 1460
+        BALLOON_WIDTH = 0.33
         videoCapture = cv2.VideoCapture(0)
         if not videoCapture.isOpened():
             print("Failed to open cvcam!!!")
             sys.exit()
 
+    # perform calibration or detection 
     if mode[1] == 1:
         # calibration mode, calibrated file will be stored in a colorinfo.dat file
         color_space = "HLS"
@@ -256,6 +273,8 @@ if __name__ == "__main__":
             # grab the raw NumPy array representing the image, then initialize the timestamp
             # and occupied/unoccupied text
             ret, frame = videoCapture.read()
+            size = (640, 480)
+            frame = cv2.resize(frame, size, interpolation=cv2.INTER_AREA)
             if not ret:
                 print("Frame capture failed!!!")
                 break
@@ -301,8 +320,6 @@ if __name__ == "__main__":
 
         # Constant for focal length, in pixels (must be changed per camera)
         # TODO: automate this using the tutorial I sent
-        FOCAL_LENGTH = 1460
-        BALLOON_WIDTH = 0.33
 
         detector = init_BlobDetection()
 
@@ -314,6 +331,8 @@ if __name__ == "__main__":
             # grab the raw NumPy array representing the image, then initialize the timestamp
             # and occupied/unoccupied text
             ret, frame = videoCapture.read()
+            size = (640, 480)
+            frame = cv2.resize(frame, size, interpolation=cv2.INTER_AREA)
             if not ret:
                 print("Frame capture failed!!!")
                 break
