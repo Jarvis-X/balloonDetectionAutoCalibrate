@@ -337,7 +337,12 @@ if __name__ == "__main__":
                 print("Frame capture failed!!!")
                 break
 
-            processed_frame = preprocess_frame(frame, mask_ROI_portion)
+            scale_percent = 60 # percent of original size
+            width = int(frame.shape[1] * scale_percent / 100)
+            height = int(frame.shape[0] * scale_percent / 100)
+            dim = (width, height)
+
+            processed_frame = preprocess_frame(frame, mask_ROI_portion, size=dim)
 
             lower = 0.75 * np.array([n_channel_data[0][0], n_channel_data[1][0], n_channel_data[2][0]])
             upper = 1.33 * np.array([n_channel_data[0][2], n_channel_data[1][2], n_channel_data[2][2]])
