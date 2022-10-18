@@ -1,21 +1,12 @@
 # import the necessary packages
 import time
 import cv2
+from cv2 import threshold
+from matplotlib.collections import TriMesh
 import numpy as np
 import sys
 import pickle
 from TrackingDetection import TrackingDetection
-
-def nothing(x):
-    pass
-
-
-cv2.namedWindow('Params')
-cv2.resizeWindow('Params', 640, 240)
-# creating trackbars threshold 1
-cv2.createTrackbar('Threshold 1', 'Params', 150, 255, nothing)
-# creating trackbars threshold 2
-cv2.createTrackbar('Threshold 2', 'Params', 255, 255, nothing)
 
 
 def parse_args():
@@ -52,11 +43,14 @@ def parse_args():
                     print("Balloon detection blob detection mode.")
                     mode[1] = 3
                 elif int(sys.argv[2]) == 4:
-                    print("Target detection treshhold mode.")
+                    print("Color calibration mode, please place the balloon in the center of the frame.")
                     mode[1] = 4
                 elif int(sys.argv[2]) == 5:
                     print("Target detection canny mode.")
                     mode[1] = 5
+                elif int(sys.argv[2]) == 6:
+                    print("Target detection color mode.")
+                    mode[1] = 6
                 else:
                     print("Invalid mode, exiting!")
                     sys.exit()
@@ -225,6 +219,7 @@ def stackFrames(scale, frameArray):
 
 
 def getShapeContours(frame, frameContour):
+    
     contours, hierarchy = cv2.findContours(frame, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
     for cnt in contours:
         area = cv2.contourArea(cnt)
@@ -327,10 +322,10 @@ if __name__ == "__main__":
 
         # using the wait key function to delay
         # the closing of windows till any key is pressed
-        with open("colorinfo.dat", "wb") as file:
+        with open("balloncolorinfo.dat", "wb") as file:
             pickle.dump(color_space, file)
             pickle.dump(hsl_channel_data_array, file)
-        print("Calibration complete, colorinfo.dat file generated.")
+        print("Calibration complete, balloncolorinfo.dat file generated.")
         sys.exit()
 
 
@@ -338,7 +333,7 @@ if __name__ == "__main__":
         # detection mode using color filter
         # obtain the calibration file
         try:
-            with open("colorinfo.dat", "rb") as file:
+            with open("balloncolorinfo.dat", "rb") as file:
                 color = pickle.load(file)
                 n_channel_data = pickle.load(file)
         except FileNotFoundError:
@@ -395,7 +390,7 @@ if __name__ == "__main__":
         # detection mode using blob detection
         # obtain the calibration file
         try:
-            with open("colorinfo.dat", "rb") as file:
+            with open("balloncolorinfo.dat", "rb") as file:
                 color = pickle.load(file)
                 n_channel_data = pickle.load(file)
                 # print("Color space: ", color)
@@ -482,56 +477,54 @@ if __name__ == "__main__":
 
 
     elif mode[1] == 4:
-        # allow the camera to warmup
-        ret, frame = videoCapture.read()
-        time.sleep(0.1)
+        # calibration mode, calibrated file will be stored in a colorinfo.dat file
+        color_space = "HLS"
+        hsl_channel_data_array = [[255, 0, 0] for _ in range(3)]
 
-        # capture frames from the camera
-        while True:
-            # grab the raw NumPy array representing the image, then initialize the timestamp
-            # and occupied/unoccupied text
+        time_begin = time.time()
+        frame_count = 0
+        videoCapture.read()
+        time.sleep(1)
+        while time.time() - time_begin < 5:
+            frame_count += 1
             ret, frame = videoCapture.read()
-
-            ratio = 600 / frame.shape[1]
-            dim = (600, int(frame.shape[0] * ratio))
-            frame = cv2.resize(frame, dim, interpolation=cv2.INTER_LINEAR)
-
             if not ret:
                 print("Frame capture failed!!!")
                 break
+            else:
+                crop_frame = \
+                    frame[int(frame.shape[0] * (1 / 2 - mask_ROI_portion / 2)):int(
+                        frame.shape[0] * (1 / 2 + mask_ROI_portion / 2)
+                    ), int(frame.shape[1] * (1 / 2 - mask_ROI_portion / 2)):int(
+                        frame.shape[1] * (1 / 2 + mask_ROI_portion / 2)
+                    )]
+                frame_hls = cv2.cvtColor(crop_frame, cv2.COLOR_BGR2HLS)
+                n_channel_min_mean_max(frame_hls, frame_count, hsl_channel_data_array)
+                ### DEBUG below
+                cv2.imshow("frame", cv2.cvtColor(frame_hls, cv2.COLOR_HLS2BGR))
+                cv2.waitKey(1)
 
-            blurFrame = cv2.blur(frame, (int((1/30) * frame.shape[0]), int((1/30) * frame.shape[0])))
-            grayFrame = cv2.cvtColor(blurFrame, cv2.COLOR_BGR2GRAY)
-            threshFrame = cv2.threshold(grayFrame, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
+        # Destroying All the windows
+        cv2.destroyAllWindows()
 
-            cnts = cv2.findContours(threshFrame, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            cnts = cnts[0] if len(cnts) == 2 else cnts[1]     
-
-            for cnt in cnts:      
-                approx = cv2.approxPolyDP(cnt,0.01*cv2.arcLength(cnt,True),True)
-                print(len(approx))
-
-                if len(approx) == 3:
-                    print("Triangle target")
-                    cv2.drawContours(frame,[cnt],0,(0,255,0),-1)
-                elif len(approx) == 4:
-                    print("Square target")
-                    cv2.drawContours(frame,[cnt],0,(0,0,255),-1)
-                elif len(approx) > 15:
-                    print("Circle target")
-                    cv2.drawContours(frame,[cnt],0,(255,0,0),-1)
-
-            cv2.imshow('Frame', frame)
-            cv2.imshow('Thresh', threshFrame)
-
-            if cv2.waitKey(33) == 27:
-                # De-allocate any associated memory usage
-                cv2.destroyAllWindows()
-                videoCapture.release()
-                break
-
+        # using the wait key function to delay
+        # the closing of windows till any key is pressed
+        with open("goalcolorinfo.dat", "wb") as file:
+            pickle.dump(color_space, file)
+            pickle.dump(hsl_channel_data_array, file)
+        print("Calibration complete, goalcolorinfo.dat file generated.")
+        sys.exit()
 
     elif mode[1] == 5:
+        def nothing(x):
+            pass
+
+        cv2.namedWindow('Parameters')
+        # creating trackbars threshold 1
+        cv2.createTrackbar('Threshold 1', 'Parameters', 150, 255, nothing)
+        # creating trackbars threshold 2
+        cv2.createTrackbar('Threshold 2', 'Parameters', 200, 255, nothing)
+
         # allow the camera to warmup
         ret, frame = videoCapture.read()
         time.sleep(0.1)
@@ -553,7 +546,10 @@ if __name__ == "__main__":
 
             blurFrame = cv2.GaussianBlur(frame, (7, 7), 1)
             grayFrame = cv2.cvtColor(blurFrame, cv2.COLOR_BGR2GRAY)
-            cannyFrame = cv2.Canny(grayFrame, 100, 120)
+
+            threshold1 = cv2.getTrackbarPos("Threshold1", "Parameters")
+            threshold2 = cv2.getTrackbarPos("Threshold2", "Parameters")
+            cannyFrame = cv2.Canny(grayFrame, threshold1, threshold2)
             
             kernel = np.ones((5, 5))
             dilateFrame = cv2.dilate(cannyFrame, kernel, iterations=1)
@@ -561,6 +557,59 @@ if __name__ == "__main__":
             targetFrame = getShapeContours(dilateFrame, frameContour)
 
             cv2.imshow('Canny', cannyFrame)
+            cv2.imshow('Dilate', dilateFrame)
+            cv2.imshow('Target', targetFrame)
+
+            if cv2.waitKey(33) == 27:
+                # De-allocate any associated memory usage
+                cv2.destroyAllWindows()
+                videoCapture.release()
+                break
+
+    elif mode[1] == 6:
+        # detection mode using color filter
+        # obtain the calibration file
+        try:
+            with open("goalcolorinfo.dat", "rb") as file:
+                color = pickle.load(file)
+                n_channel_data = pickle.load(file)
+        except FileNotFoundError:
+            print("Calibrate the color first!!!")
+            sys.exit()
+
+        # allow the camera to warmup
+        ret, frame = videoCapture.read()
+        time.sleep(0.1)
+
+        # capture frames from the camera
+        while True:
+            # grab the raw NumPy array representing the image, then initialize the timestamp
+            # and occupied/unoccupied text
+            ret, frame = videoCapture.read()
+
+            ratio = 600 / frame.shape[1]
+            dim = (600, int(frame.shape[0] * ratio))
+            frame = cv2.resize(frame, dim, interpolation=cv2.INTER_LINEAR)
+            frameContour = frame.copy()
+            
+            if not ret:
+                print("Frame capture failed!!!")
+                break
+
+            blurFrame = cv2.GaussianBlur(frame, (7, 7), 1)
+            hsvframe = cv2.cvtColor(blurFrame, cv2.COLOR_BGR2HSV)
+            
+            lower = 0.75 * np.array([n_channel_data[0][0], n_channel_data[1][0], n_channel_data[2][0]])
+            upper = 1.33 * np.array([n_channel_data[0][2], n_channel_data[1][2], n_channel_data[2][2]])
+            mask = cv2.inRange(hsvframe, lower, upper)
+            colorFrame = cv2.bitwise_and(frame, frame, mask=mask)
+
+            kernel = np.ones((5, 5), dtype=np.uint8)
+            dilateFrame = cv2.dilate(mask, kernel, iterations=1)
+
+            targetFrame = getShapeContours(dilateFrame, frameContour)
+
+            cv2.imshow('Color', colorFrame)
             cv2.imshow('Dilate', dilateFrame)
             cv2.imshow('Target', targetFrame)
 
