@@ -28,11 +28,6 @@ Blur, Gray, then contour detection -> output bounding boxes of the contours.
 
 Type in your terminal: `python main.py cvcam 4` and let the camera see the object. 
 
-#### Threshold detection:
-Blur, Gray, Threshold, then contour detection -> output bounding boxes of the contours.
-
-Type in your terminal: `python main.py cvcam 4` and let the camera see the object. 
-
 #### Canny detection (*Prefered)
 Blur, Gray, Threshold, Canny, then contour detection -> output bounding boxes of the contours.
 
