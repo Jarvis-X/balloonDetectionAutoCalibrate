@@ -228,20 +228,20 @@ def getShapeContours(frame, frameContour):
     contours, hierarchy = cv2.findContours(frame, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
     for cnt in contours:
         area = cv2.contourArea(cnt)
-        if area > 500:
+        if area > 1000:
             cv2.drawContours(frameContour, cnt, -1, (255, 0, 255), 7)
             perimeter = cv2.arcLength(cnt, True)
             approx = cv2.approxPolyDP(cnt, 0.02 * perimeter, True)
-            print(len(approx))
+            # print(len(approx))
             if len(approx) == 3:
                 print("Triangle target")
-                cv2.drawContours(frame,[cnt],0,(0,255,0),-1)
+                cv2.drawContours(frame,[cnt],0,(0,255,0),3)
             elif len(approx) == 4:
                 print("Square target")
-                cv2.drawContours(frame,[cnt],0,(0,0,255),-1)
+                cv2.drawContours(frame,[cnt],0,(0,0,255),3)
             elif len(approx) > 15:
                 print("Circle target")
-                cv2.drawContours(frame,[cnt],0,(255,0,0),-1)
+                cv2.drawContours(frame,[cnt],0,(255,0,0),3)
 
             x, y, w, h = cv2.boundingRect(approx)
             cv2.rectangle(frameContour, (x, y), (x + w, y + h), (0, 255, 0), 2)
@@ -249,6 +249,8 @@ def getShapeContours(frame, frameContour):
                         (0, 255, 0), 2)
             cv2.putText(frameContour, "Area: " + str(int(area)), (x + w + 20, y + 45), cv2.FONT_HERSHEY_COMPLEX, 0.7,
                         (0, 255, 0), 2)
+
+    return frameContour
 
 
 if __name__ == "__main__":
@@ -539,11 +541,11 @@ if __name__ == "__main__":
             # grab the raw NumPy array representing the image, then initialize the timestamp
             # and occupied/unoccupied text
             ret, frame = videoCapture.read()
-            frameContour = frame.copy()
 
             ratio = 600 / frame.shape[1]
             dim = (600, int(frame.shape[0] * ratio))
             frame = cv2.resize(frame, dim, interpolation=cv2.INTER_LINEAR)
+            frameContour = frame.copy()
             
             if not ret:
                 print("Frame capture failed!!!")
@@ -551,16 +553,16 @@ if __name__ == "__main__":
 
             blurFrame = cv2.GaussianBlur(frame, (7, 7), 1)
             grayFrame = cv2.cvtColor(blurFrame, cv2.COLOR_BGR2GRAY)
-            cannyFrame = cv2.Canny(grayFrame, 50, 100)
+            cannyFrame = cv2.Canny(grayFrame, 100, 120)
             
             kernel = np.ones((5, 5))
             dilateFrame = cv2.dilate(cannyFrame, kernel, iterations=1)
 
-            getShapeContours(dilateFrame, frameContour)
+            targetFrame = getShapeContours(dilateFrame, frameContour)
 
-            cv2.imshow('Gray', grayFrame)
             cv2.imshow('Canny', cannyFrame)
             cv2.imshow('Dilate', dilateFrame)
+            cv2.imshow('Target', targetFrame)
 
             if cv2.waitKey(33) == 27:
                 # De-allocate any associated memory usage
