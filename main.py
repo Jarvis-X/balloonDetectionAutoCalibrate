@@ -6,6 +6,17 @@ import sys
 import pickle
 from TrackingDetection import TrackingDetection
 
+def nothing(x):
+    pass
+
+
+cv2.namedWindow('Params')
+cv2.resizeWindow('Params', 640, 240)
+# creating trackbars threshold 1
+cv2.createTrackbar('Threshold 1', 'Params', 150, 255, nothing)
+# creating trackbars threshold 2
+cv2.createTrackbar('Threshold 2', 'Params', 255, 255, nothing)
+
 
 def parse_args():
     """Function to parse the system arguments"""
@@ -40,6 +51,12 @@ def parse_args():
                 elif int(sys.argv[2]) == 3:
                     print("Balloon detection blob detection mode.")
                     mode[1] = 3
+                elif int(sys.argv[2]) == 4:
+                    print("Target detection treshhold mode.")
+                    mode[1] = 4
+                elif int(sys.argv[2]) == 5:
+                    print("Target detection canny mode.")
+                    mode[1] = 5
                 else:
                     print("Invalid mode, exiting!")
                     sys.exit()
@@ -173,6 +190,67 @@ def preprocess_frame(frame, blur_kernel_size, blur_method="average", size=(640, 
     return preprocessed_frame
 
 
+def stackFrames(scale, frameArray):
+    rows = len(frameArray)
+    cols = len(frameArray[0])
+    rowsAvailable = isinstance(frameArray[0], list)
+    width = frameArray[0][0].shape[1]
+    height = frameArray[0][0].shape[0]
+    if rowsAvailable:
+        for x in range(0, rows):
+            for y in range(0, cols):
+                if frameArray[x][y].shape[:2] == frameArray[0][0].shape[:2]:
+                    frameArray[x][y] = cv2.resize(frameArray[x][y], (0, 0), None, scale, scale)
+                else:
+                    frameArray[x][y] = cv2.resize(frameArray[x][y], (frameArray[0][0].shape[1], frameArray[0][0].shape[0]),
+                                                  None, scale, scale)
+                if len(frameArray[x][y].shape) == 2: frameArray[x][y] = cv2.cvtColor(frameArray[x][y], cv2.COLOR_GRAY2BGR)
+        imageBlank = np.zeros((height, width, 3), np.uint8)
+        hor = [imageBlank] * rows
+        hor_con = [imageBlank] * rows
+        for x in range(0, rows):
+            hor[x] = np.hstack(frameArray[x])
+        ver = np.vstack(hor)
+    else:
+        for x in range(0, rows):
+            if frameArray[x].shape[:2] == frameArray[0].shape[:2]:
+                frameArray[x] = cv2.resize(frameArray[x], (0, 0), None, scale, scale)
+            else:
+                frameArray[x] = cv2.resize(frameArray[x], (frameArray[0].shape[1], frameArray[0].shape[0]), None, scale,
+                                           scale)
+            if len(frameArray[x].shape) == 2: frameArray[x] = cv2.cvtColor(frameArray[x], cv2.COLOR_GRAY2BGR)
+        hor = np.hstack(frameArray)
+        ver = hor
+    return ver
+
+
+def getShapeContours(frame, frameContour):
+    contours, hierarchy = cv2.findContours(frame, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    for cnt in contours:
+        area = cv2.contourArea(cnt)
+        if area > 500:
+            cv2.drawContours(frameContour, cnt, -1, (255, 0, 255), 7)
+            perimeter = cv2.arcLength(cnt, True)
+            approx = cv2.approxPolyDP(cnt, 0.02 * perimeter, True)
+            print(len(approx))
+            if len(approx) == 3:
+                print("Triangle target")
+                cv2.drawContours(frame,[cnt],0,(0,255,0),-1)
+            elif len(approx) == 4:
+                print("Square target")
+                cv2.drawContours(frame,[cnt],0,(0,0,255),-1)
+            elif len(approx) > 15:
+                print("Circle target")
+                cv2.drawContours(frame,[cnt],0,(255,0,0),-1)
+
+            x, y, w, h = cv2.boundingRect(approx)
+            cv2.rectangle(frameContour, (x, y), (x + w, y + h), (0, 255, 0), 2)
+            cv2.putText(frameContour, "Points: " + str(len(approx)), (x + w + 20, y + 20), cv2.FONT_HERSHEY_COMPLEX, 0.7,
+                        (0, 255, 0), 2)
+            cv2.putText(frameContour, "Area: " + str(int(area)), (x + w + 20, y + 45), cv2.FONT_HERSHEY_COMPLEX, 0.7,
+                        (0, 255, 0), 2)
+
+
 if __name__ == "__main__":
     # parse arguments
     mask_ROI_portion = 1 / 20
@@ -211,6 +289,7 @@ if __name__ == "__main__":
         if not videoCapture.isOpened():
             print("Failed to open cvcam!!!")
             sys.exit()
+
 
     # perform calibration or detection 
     if mode[1] == 1:
@@ -252,6 +331,7 @@ if __name__ == "__main__":
         print("Calibration complete, colorinfo.dat file generated.")
         sys.exit()
 
+
     elif mode[1] == 2:
         # detection mode using color filter
         # obtain the calibration file
@@ -275,7 +355,6 @@ if __name__ == "__main__":
 
             ratio = 600 / frame.shape[1]
             dim = (600, int(frame.shape[0] * ratio))
-
             frame = cv2.resize(frame, dim, interpolation=cv2.INTER_LINEAR)
 
             if not ret:
@@ -308,6 +387,7 @@ if __name__ == "__main__":
                 cv2.destroyAllWindows()
                 videoCapture.release()
                 break
+
 
     elif mode[1] == 3:
         # detection mode using blob detection
@@ -387,14 +467,107 @@ if __name__ == "__main__":
             # Draw detected blobs as red circles
             blobs = cv2.drawKeypoints(frame, keypoints, blank, (0, 0, 255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
 
-            cv2.imshow('Blobs', blobs)
+            # Show the frames
+            # frameStack = stackFrames(1, [mask, blobs])
             cv2.imshow('Mask', mask)
+            cv2.imshow('Blobs', blobs)
 
             if cv2.waitKey(33) == 27:
                 # De-allocate any associated memory usage
                 cv2.destroyAllWindows()
                 videoCapture.release()
                 break
+
+
+    elif mode[1] == 4:
+        # allow the camera to warmup
+        ret, frame = videoCapture.read()
+        time.sleep(0.1)
+
+        # capture frames from the camera
+        while True:
+            # grab the raw NumPy array representing the image, then initialize the timestamp
+            # and occupied/unoccupied text
+            ret, frame = videoCapture.read()
+
+            ratio = 600 / frame.shape[1]
+            dim = (600, int(frame.shape[0] * ratio))
+            frame = cv2.resize(frame, dim, interpolation=cv2.INTER_LINEAR)
+
+            if not ret:
+                print("Frame capture failed!!!")
+                break
+
+            blurFrame = cv2.blur(frame, (int((1/30) * frame.shape[0]), int((1/30) * frame.shape[0])))
+            grayFrame = cv2.cvtColor(blurFrame, cv2.COLOR_BGR2GRAY)
+            threshFrame = cv2.threshold(grayFrame, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
+
+            cnts = cv2.findContours(threshFrame, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            cnts = cnts[0] if len(cnts) == 2 else cnts[1]     
+
+            for cnt in cnts:      
+                approx = cv2.approxPolyDP(cnt,0.01*cv2.arcLength(cnt,True),True)
+                print(len(approx))
+
+                if len(approx) == 3:
+                    print("Triangle target")
+                    cv2.drawContours(frame,[cnt],0,(0,255,0),-1)
+                elif len(approx) == 4:
+                    print("Square target")
+                    cv2.drawContours(frame,[cnt],0,(0,0,255),-1)
+                elif len(approx) > 15:
+                    print("Circle target")
+                    cv2.drawContours(frame,[cnt],0,(255,0,0),-1)
+
+            cv2.imshow('Frame', frame)
+            cv2.imshow('Thresh', threshFrame)
+
+            if cv2.waitKey(33) == 27:
+                # De-allocate any associated memory usage
+                cv2.destroyAllWindows()
+                videoCapture.release()
+                break
+
+
+    elif mode[1] == 5:
+        # allow the camera to warmup
+        ret, frame = videoCapture.read()
+        time.sleep(0.1)
+
+        # capture frames from the camera
+        while True:
+            # grab the raw NumPy array representing the image, then initialize the timestamp
+            # and occupied/unoccupied text
+            ret, frame = videoCapture.read()
+            frameContour = frame.copy()
+
+            ratio = 600 / frame.shape[1]
+            dim = (600, int(frame.shape[0] * ratio))
+            frame = cv2.resize(frame, dim, interpolation=cv2.INTER_LINEAR)
+            
+            if not ret:
+                print("Frame capture failed!!!")
+                break
+
+            blurFrame = cv2.GaussianBlur(frame, (7, 7), 1)
+            grayFrame = cv2.cvtColor(blurFrame, cv2.COLOR_BGR2GRAY)
+            cannyFrame = cv2.Canny(grayFrame, 50, 100)
+            
+            kernel = np.ones((5, 5))
+            dilateFrame = cv2.dilate(cannyFrame, kernel, iterations=1)
+
+            getShapeContours(dilateFrame, frameContour)
+
+            cv2.imshow('Gray', grayFrame)
+            cv2.imshow('Canny', cannyFrame)
+            cv2.imshow('Dilate', dilateFrame)
+
+            if cv2.waitKey(33) == 27:
+                # De-allocate any associated memory usage
+                cv2.destroyAllWindows()
+                videoCapture.release()
+                break
+        
 
     else:
         print("Invalid mode!!!")
