@@ -196,18 +196,25 @@ def getShapeContours(frame, frameContour, ratio):
     FOCAL_LENGTH = 1460
     GOALWIDTH = 1.60
 
+    # X and Y for the center of the goal
     cx_data = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
     cxdata = TrackingDetection(cx_data)
     cy_data = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
     cydata = TrackingDetection(cy_data)
-    x_data = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+
+    # Distance  in inches
+    dis_data = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+    disdata = TrackingDetection(dis_data)
+
+    # X Y X H for the bounding box
+    x_data = [0]*15
     xdata = TrackingDetection(x_data)
-    y_data = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-    ydata = TrackingDetection(x_data)
-    w_data = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-    wdata = TrackingDetection(x_data)
-    h_data = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-    hdata = TrackingDetection(x_data)
+    y_data = [0]*15
+    ydata = TrackingDetection(y_data)
+    w_data = [0]*15
+    wdata = TrackingDetection(w_data)
+    h_data = [0]*15
+    hdata = TrackingDetection(h_data)
                             
     contours, hierarchy = cv2.findContours(frame, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
     for cnt in contours:
@@ -215,7 +222,7 @@ def getShapeContours(frame, frameContour, ratio):
         if area > 1000:
             (sx,sy),radius = cv2.minEnclosingCircle(cnt)
             cxdata.update(int(sx))
-            cxdata.update(int(sy))
+            cydata.update(int(sy))
             print("Goal X: ", cxdata.get())
             print("Goal Y: ", cydata.get())
             center = (int(sx),int(sy))
@@ -224,11 +231,13 @@ def getShapeContours(frame, frameContour, ratio):
             diag = 2*radius
             cv2.circle(frameContour,center,radius,(0,255,0),2)
             cv2.circle(frameContour, center, radius=0, color=(0, 0, 255), thickness=10)
+
             if diag:
                 p = diag                         # perceived width, in pixels
                 w = GOALWIDTH                    # approx. actual width, in meters (pre-computed)
                 f = FOCAL_LENGTH * ratio         # camera focal length, in pixels (pre-computed)
                 d = f * w / p
+                disdata.update(d)
                 print("Goal Distance=%.3fm" % d)
 
 
@@ -332,22 +341,107 @@ if __name__ == "__main__":
         # allow the camera to warmup
         ret, frame = videoCapture.read()
         time.sleep(0.1)
+       
+        bcx_data = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+        bcxdata = TrackingDetection(bcx_data)
+        bcy_data = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+        bcydata = TrackingDetection(bcy_data)
+        disb_data = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+        disbdata = TrackingDetection(disb_data)
 
-        # capture frames from the camera
         while True:
             # grab the raw NumPy array representing the image, then initialize the timestamp
             # and occupied/unoccupied text
             ret, frame = videoCapture.read()
 
+            detector = init_BlobDetection()
+
             ratio = 600 / frame.shape[1]
             dim = (600, int(frame.shape[0] * ratio))
+
             frame = cv2.resize(frame, dim, interpolation=cv2.INTER_LINEAR)
+            frameContour = frame.copy()
 
             if not ret:
                 print("Frame capture failed!!!")
                 break
 
+
+            """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+            """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+            blurFrame = cv2.GaussianBlur(frame, (7, 7), 1)
+            hsvframe = cv2.cvtColor(blurFrame, cv2.COLOR_BGR2HSV)
+            kernel = np.ones((3, 3), dtype=np.uint8)
+            
+            glower = 0.75 * np.array([n_channel_data[0][0], n_channel_data[1][0], n_channel_data[2][0]])
+            gupper = 1.33 * np.array([n_channel_data[0][2], n_channel_data[1][2], n_channel_data[2][2]])
+            gmask = cv2.inRange(hsvframe, glower, gupper)
+
+            kernel = np.ones((7, 7), dtype=np.uint8)
+            colorFrame = cv2.bitwise_and(frame, frame, mask=gmask)
+            dilateFrame = cv2.dilate(gmask, kernel, iterations=0)
+
+            targetFrame = getShapeContours(dilateFrame, frameContour, ratio)
+
+            """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+            """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
             processed_frame = preprocess_frame(frame, mask_ROI_portion, size=frame.shape)
+
+            blower = 0.75 * np.array([n_channel_data[0][0], n_channel_data[1][0], n_channel_data[2][0]])
+            bupper = 1.33 * np.array([n_channel_data[0][2], n_channel_data[1][2], n_channel_data[2][2]])
+
+            dilate_kernel_size = int(mask_ROI_portion * frame.shape[1])
+            bmask = binary_color_mask_and_regulate(processed_frame, blower, bupper,
+                                                  None, np.ones((dilate_kernel_size, dilate_kernel_size)),
+                                                  num_erode=5, num_dilate=3,
+                                                  second_erode=True)
+
+            bmask = cv2.erode(bmask, np.ones((dilate_kernel_size, dilate_kernel_size)), iterations=2)
+
+            box_width = 0
+            bounding_rects = find_and_bound_contours(bmask, frame)
+            for bounding_rect in bounding_rects:
+                x, y, w, h = bounding_rect  # create bonding box
+                box_width = w
+                cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                bcxdata.update(int(x + w / 2))
+                bcydata.update(int(y + h / 2))
+                x_avg = int(bcxdata.get())
+                y_avg = int(bcydata.get())
+                print("Ballon Center X: ", x_avg)
+                print("Ballon Center Y: ", x_avg)
+                center = (x_avg, y_avg)
+                frame = cv2.circle(frame, center, radius=0, color=(0, 0, 255), thickness=10)
+
+            # Detect blobs
+            keypoints = detector.detect(bmask)
+
+            if len(keypoints) > 0:
+                if keypoints[0].size > 100:
+                    keypoints[0].size = keypoints[0].size - 30
+                # Get the number of blobs found
+                blobCount = len(keypoints)
+                if box_width:
+                    p = box_width             # perceived width, in pixels
+                    w = BALLOON_WIDTH         # approx. actual width, in meters (pre-computed)
+                    f = FOCAL_LENGTH * ratio  # camera focal length, in pixels (pre-computed)
+                    d = f * w / p
+                    disbdata.update(d)
+                    # cv2.putText(frame, "Distance=%.3fm" % d, (5, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 1)
+                    print("Ballon Distance=%.3fm" % disbdata.get())
+
+            blank = np.zeros((1, 1))
+
+            # Draw detected blobs as red circles
+            blobs = cv2.drawKeypoints(frame, keypoints, blank, (0, 0, 255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+
+            if cv2.waitKey(33) == 27:
+                # De-allocate any associated memory usage
+                cv2.destroyAllWindows()
+                videoCapture.release()
+                break
 
 
 
