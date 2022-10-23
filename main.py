@@ -190,32 +190,70 @@ def preprocess_frame(frame, blur_kernel_size, blur_method="average", size=(640, 
     return preprocessed_frame
 
 
-def getShapeContours(frame, frameContour, ratio):
+def getBallonContours(detector, frame, frameContour, ratio, bcxdata, bcydata, disbdata):
+
+    # Constant for focal length, in pixels (must be changed per camera)
+    FOCAL_LENGTH = 1460
+    BALLONWIDTH = 0.33
+
+    processed_frame = preprocess_frame(frame, mask_ROI_portion, size=frame.shape)
+
+    blower = 0.75 * np.array([n_channel_data_b[0][0], n_channel_data_b[1][0], n_channel_data_b[2][0]])
+    bupper = 1.33 * np.array([n_channel_data_b[0][2], n_channel_data_b[1][2], n_channel_data_b[2][2]])
+
+    dilate_kernel_size = int(mask_ROI_portion * frame.shape[1])
+    bmask = binary_color_mask_and_regulate(processed_frame, blower, bupper,
+                                            None, np.ones((dilate_kernel_size, dilate_kernel_size)),
+                                            num_erode=5, num_dilate=3,
+                                            second_erode=True)
+
+    bmask = cv2.erode(bmask, np.ones((dilate_kernel_size, dilate_kernel_size)), iterations=2)
+
+    box_width = 0
+    bounding_rects = find_and_bound_contours(bmask, frame)
+    for bounding_rect in bounding_rects:
+        x, y, w, h = bounding_rect  # create bonding box
+        box_width = w
+        cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+        bcxdata.update(int(x + w / 2))
+        bcydata.update(int(y + h / 2))
+        x_avg = int(bcxdata.get())
+        y_avg = int(bcydata.get())
+        print("Ballon Center X: ", x_avg)
+        print("Ballon Center Y: ", x_avg)
+        center = (x_avg, y_avg)
+        frameContour = cv2.circle(frame, center, radius=0, color=(0, 0, 255), thickness=10)
+
+    # Detect blobs
+    keypoints = detector.detect(bmask)
+
+    if len(keypoints) > 0:
+        if keypoints[0].size > 100:
+            keypoints[0].size = keypoints[0].size - 20
+        # Get the number of blobs found
+        if box_width:
+            p = box_width             # perceived width, in pixels
+            w = BALLOON_WIDTH         # approx. actual width, in meters (pre-computed)
+            f = FOCAL_LENGTH * ratio  # camera focal length, in pixels (pre-computed)
+            d = f * w / p
+            disbdata.update(d)
+            # cv2.putText(frame, "Distance=%.3fm" % d, (5, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 1)
+            print("Ballon Distance=%.3fm" % disbdata.get())
+
+    blank = np.zeros((1, 1))
+
+    # Draw detected blobs as red circles
+    frameContour = cv2.drawKeypoints(frameContour, keypoints, blank, (0, 0, 255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+
+    return frameContour
+
+
+def getShapeContours(frame, frameContour, ratio, cxdata, cydata, radiusdata, disdata):
 
     # Constant for focal length, in pixels (must be changed per camera)
     FOCAL_LENGTH = 1460
     GOALWIDTH = 1.60
 
-    # X and Y for the center of the goal
-    cx_data = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-    cxdata = TrackingDetection(cx_data)
-    cy_data = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-    cydata = TrackingDetection(cy_data)
-
-    # Distance  in inches
-    dis_data = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-    disdata = TrackingDetection(dis_data)
-
-    # X Y X H for the bounding box
-    x_data = [0]*15
-    xdata = TrackingDetection(x_data)
-    y_data = [0]*15
-    ydata = TrackingDetection(y_data)
-    w_data = [0]*15
-    wdata = TrackingDetection(w_data)
-    h_data = [0]*15
-    hdata = TrackingDetection(h_data)
-                            
     contours, hierarchy = cv2.findContours(frame, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
     for cnt in contours:
         area = cv2.contourArea(cnt)
@@ -223,11 +261,15 @@ def getShapeContours(frame, frameContour, ratio):
             (sx,sy),radius = cv2.minEnclosingCircle(cnt)
             cxdata.update(int(sx))
             cydata.update(int(sy))
-            print("Goal X: ", cxdata.get())
-            print("Goal Y: ", cydata.get())
-            center = (int(sx),int(sy))
-
-            radius = int(radius)
+            radiusdata.update(int(radius))
+            print("Goal X:", cxdata.get())
+            print(sx)
+            cxdata.print()
+            print("Goal Y:", cydata.get())
+            print(sy)
+            cydata.print()
+            center = (int(sx), int(sy))
+            radius = int(radiusdata.get())
             diag = 2*radius
             cv2.circle(frameContour,center,radius,(0,255,0),2)
             cv2.circle(frameContour, center, radius=0, color=(0, 0, 255), thickness=10)
@@ -237,29 +279,14 @@ def getShapeContours(frame, frameContour, ratio):
                 w = GOALWIDTH                    # approx. actual width, in meters (pre-computed)
                 f = FOCAL_LENGTH * ratio         # camera focal length, in pixels (pre-computed)
                 d = f * w / p
-                disdata.update(d)
-                print("Goal Distance=%.3fm" % d)
+                disdata.update(int(d))
+                print("Goal Distance=%.3fm" % disdata.get())
 
 
-            # cv2.drawContours(frameContour, cnt, -1, (255, 0, 255), 7)
+            cv2.drawContours(frameContour, cnt, -1, (255, 0, 255), 7)
             perimeter = cv2.arcLength(cnt, True)
             approx = cv2.approxPolyDP(cnt, 0.02 * perimeter, True)
-            # print(len(approx))
 
-            x, y, w, h = cv2.boundingRect(approx)
-            xdata.update(x)
-            ydata.update(y)
-            wdata.update(w)
-            hdata.update(h)
-
-            x_avg = xdata.get()
-            y_avg = ydata.get()
-            w_avg = wdata.get()
-            h_avg = hdata.get()
-            cv2.rectangle(frameContour, (int(x_avg), int(y_avg)), (int(x_avg + w_avg), int(y_avg + h_avg)), (0, 255, 0), 2)
-            #cv2.putText(frameContour, "Target", (int(x_avg + w_avg / 2) - 10, int(y_avg + h_avg / 2) - 10), cv2.FONT_HERSHEY_COMPLEX, 0.7, (0, 255, 0), 2)
-            #cv2.putText(frameContour, "Points: " + str(len(approx)), (x + w + 20, y + 20), cv2.FONT_HERSHEY_COMPLEX, 0.7, (0, 255, 0), 2)
-            #cv2.putText(frameContour, "Area: " + str(int(area)), (x + w + 20, y + 45), cv2.FONT_HERSHEY_COMPLEX, 0.7, (0, 255, 0), 2)
             if len(approx) == 3 or len(approx) == 4 or len(approx) > 15:
                 if len(approx) == 3:
                     print("Triangle target")
@@ -270,8 +297,6 @@ def getShapeContours(frame, frameContour, ratio):
                 elif len(approx) > 15:
                     print("Circle target")
                     cv2.drawContours(frameContour,[cnt],0,(255,0,0),3)
-
-        #clearConsole()
 
     return frameContour
 
@@ -319,21 +344,24 @@ if __name__ == "__main__":
             print("Failed to open cvcam!!!")
             sys.exit()
 
+    """
+    This mode allows the ballon and the goal to be detected simultaneously
+    """
     if mode[1] == 0:
         # detection mode using color filter
         # obtain the calibration file for the ballon
         try:
-            with open("balloncolorinfo.dat", "rb") as file:
-                color = pickle.load(file)
-                n_channel_data = pickle.load(file)
+            with open("balloncolorinfo.dat", "rb") as file1:
+                color = pickle.load(file1)
+                n_channel_data_b = pickle.load(file1)
         except FileNotFoundError:
             print("Calibrate the color first!!!")
             sys.exit()
         # obtain the calibration file for the goal
         try:
-            with open("balloncolorinfo.dat", "rb") as file:
-                color = pickle.load(file)
-                n_channel_data = pickle.load(file)
+            with open("goalcolorinfo.dat", "rb") as file2:
+                color = pickle.load(file2)
+                n_channel_data_g = pickle.load(file2)
         except FileNotFoundError:
             print("Calibrate the color first!!!")
             sys.exit()
@@ -342,101 +370,66 @@ if __name__ == "__main__":
         ret, frame = videoCapture.read()
         time.sleep(0.1)
        
-        bcx_data = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+        # X and Y for the center of the ballon
+        bcx_data = [0] * 15
         bcxdata = TrackingDetection(bcx_data)
-        bcy_data = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+        bcy_data = [0] * 15
         bcydata = TrackingDetection(bcy_data)
-        disb_data = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+        # Distance of the ballon
+        disb_data = [0] * 15
         disbdata = TrackingDetection(disb_data)
+
+        # X and Y for the center of the goal
+        cx_data = [0] * 15
+        cxdata = TrackingDetection(cx_data)
+        cy_data = [0] * 15
+        cydata = TrackingDetection(cy_data)
+        # radius
+        radius_data = [0] * 15
+        radiusdata = TrackingDetection(radius_data)
+        # Distance of the goal
+        dis_data = [0] * 15
+        disdata = TrackingDetection(dis_data)
 
         while True:
             # grab the raw NumPy array representing the image, then initialize the timestamp
             # and occupied/unoccupied text
             ret, frame = videoCapture.read()
-
-            detector = init_BlobDetection()
-
-            ratio = 600 / frame.shape[1]
-            dim = (600, int(frame.shape[0] * ratio))
-
-            frame = cv2.resize(frame, dim, interpolation=cv2.INTER_LINEAR)
-            frameContour = frame.copy()
-
             if not ret:
                 print("Frame capture failed!!!")
                 break
-
+            # get the desierd frame size
+            ratio = 600 / frame.shape[1]
+            dim = (600, int(frame.shape[0] * ratio))
+            # resize the image
+            frame = cv2.resize(frame, dim, interpolation=cv2.INTER_LINEAR)
+            frameContour = frame.copy()
 
             """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
             """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-
+    
             blurFrame = cv2.GaussianBlur(frame, (7, 7), 1)
             hsvframe = cv2.cvtColor(blurFrame, cv2.COLOR_BGR2HSV)
             kernel = np.ones((3, 3), dtype=np.uint8)
             
-            glower = 0.75 * np.array([n_channel_data[0][0], n_channel_data[1][0], n_channel_data[2][0]])
-            gupper = 1.33 * np.array([n_channel_data[0][2], n_channel_data[1][2], n_channel_data[2][2]])
+            glower = 0.75 * np.array([n_channel_data_g[0][0], n_channel_data_g[1][0], n_channel_data_g[2][0]])
+            gupper = 1.33 * np.array([n_channel_data_g[0][2], n_channel_data_g[1][2], n_channel_data_g[2][2]])
             gmask = cv2.inRange(hsvframe, glower, gupper)
 
             kernel = np.ones((7, 7), dtype=np.uint8)
             colorFrame = cv2.bitwise_and(frame, frame, mask=gmask)
             dilateFrame = cv2.dilate(gmask, kernel, iterations=0)
 
-            targetFrame = getShapeContours(dilateFrame, frameContour, ratio)
+            goalTargetFrame = getShapeContours(dilateFrame, frameContour, ratio, cxdata, cydata, radiusdata, disdata)
 
             """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
             """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
-            processed_frame = preprocess_frame(frame, mask_ROI_portion, size=frame.shape)
+            # detect the ballon
+            detector = init_BlobDetection()
 
-            blower = 0.75 * np.array([n_channel_data[0][0], n_channel_data[1][0], n_channel_data[2][0]])
-            bupper = 1.33 * np.array([n_channel_data[0][2], n_channel_data[1][2], n_channel_data[2][2]])
-
-            dilate_kernel_size = int(mask_ROI_portion * frame.shape[1])
-            bmask = binary_color_mask_and_regulate(processed_frame, blower, bupper,
-                                                  None, np.ones((dilate_kernel_size, dilate_kernel_size)),
-                                                  num_erode=5, num_dilate=3,
-                                                  second_erode=True)
-
-            bmask = cv2.erode(bmask, np.ones((dilate_kernel_size, dilate_kernel_size)), iterations=2)
-
-            box_width = 0
-            bounding_rects = find_and_bound_contours(bmask, frame)
-            for bounding_rect in bounding_rects:
-                x, y, w, h = bounding_rect  # create bonding box
-                box_width = w
-                cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
-                bcxdata.update(int(x + w / 2))
-                bcydata.update(int(y + h / 2))
-                x_avg = int(bcxdata.get())
-                y_avg = int(bcydata.get())
-                print("Ballon Center X: ", x_avg)
-                print("Ballon Center Y: ", x_avg)
-                center = (x_avg, y_avg)
-                frame = cv2.circle(frame, center, radius=0, color=(0, 0, 255), thickness=10)
-
-            # Detect blobs
-            keypoints = detector.detect(bmask)
-
-            if len(keypoints) > 0:
-                if keypoints[0].size > 100:
-                    keypoints[0].size = keypoints[0].size - 30
-                # Get the number of blobs found
-                blobCount = len(keypoints)
-                if box_width:
-                    p = box_width             # perceived width, in pixels
-                    w = BALLOON_WIDTH         # approx. actual width, in meters (pre-computed)
-                    f = FOCAL_LENGTH * ratio  # camera focal length, in pixels (pre-computed)
-                    d = f * w / p
-                    disbdata.update(d)
-                    # cv2.putText(frame, "Distance=%.3fm" % d, (5, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 1)
-                    print("Ballon Distance=%.3fm" % disbdata.get())
-
-            blank = np.zeros((1, 1))
-
-            # Draw detected blobs as red circles
-            blobs = cv2.drawKeypoints(frame, keypoints, blank, (0, 0, 255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-
+            ballonTargetFrame = getBallonContours(detector, frame, frameContour, ratio, bcxdata, bcydata, disbdata)
+            
             if cv2.waitKey(33) == 27:
                 # De-allocate any associated memory usage
                 cv2.destroyAllWindows()
@@ -756,45 +749,52 @@ if __name__ == "__main__":
         ret, frame = videoCapture.read()
         time.sleep(0.1)
 
+        # X and Y for the center of the goal
+        cx_data = [0] * 15
+        cxdata = TrackingDetection(cx_data)
+        cy_data = [0] * 15
+        cydata = TrackingDetection(cy_data)
+        # radius
+        radius_data = [0] * 15
+        radiusdata = TrackingDetection(radius_data)
+        # Distance in meters
+        dis_data = [0] * 15
+        disdata = TrackingDetection(dis_data)
+
         # capture frames from the camera
         while True:
-            # grab the raw NumPy array representing the image, then initialize the timestamp
-            # and occupied/unoccupied text
             ret, frame = videoCapture.read()
-
             ratio = 600 / frame.shape[1]
             dim = (600, int(frame.shape[0] * ratio))
             frame = cv2.resize(frame, dim, interpolation=cv2.INTER_LINEAR)
             frameContour = frame.copy()
-            
             if not ret:
                 print("Frame capture failed!!!")
                 break
 
-            blurFrame = cv2.GaussianBlur(frame, (7, 7), 1)
+            blurFrame = cv2.GaussianBlur(frame, (9, 9), 1)
             hsvframe = cv2.cvtColor(blurFrame, cv2.COLOR_BGR2HSV)
-            kernel = np.ones((3, 3), dtype=np.uint8)
             
-            lower = 0.75 * np.array([n_channel_data[0][0], n_channel_data[1][0], n_channel_data[2][0]])
-            upper = 1.33 * np.array([n_channel_data[0][2], n_channel_data[1][2], n_channel_data[2][2]])
+            lower = 0.75 * np.array([n_channel_data_g[0][0], n_channel_data_g[1][0], n_channel_data_g[2][0]])
+            upper = 1.33 * np.array([n_channel_data_g[0][2], n_channel_data_g[1][2], n_channel_data_g[2][2]])
             mask = cv2.inRange(hsvframe, lower, upper)
-            cv2.imshow('Mask', mask)
+            #cv2.imshow('Mask', mask)
             #mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
             #cv2.imshow('After', mask)
 
-            kernel = np.ones((7, 7), dtype=np.uint8)
+            kernel = np.ones((5, 5), dtype=np.uint8)
             colorFrame = cv2.bitwise_and(frame, frame, mask=mask)
             #erodeFrame = cv2.erode(mask, kernel, iterations=1)
-            dilateFrame = cv2.dilate(mask, kernel, iterations=0)
+            dilateFrame = cv2.dilate(mask, kernel, iterations=1)
 
             #kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (101,1))
             #morph = cv2.morphologyEx(dilateFrame, cv2.MORPH_CLOSE, kernel)
             #cv2.imshow('Morph', morph)
 
-            targetFrame = getShapeContours(dilateFrame, frameContour, ratio)
+            targetFrame = getShapeContours(dilateFrame, frameContour, ratio, cxdata, cydata, radiusdata, disdata)
 
             cv2.imshow('Color', colorFrame)
-            #cv2.imshow('Dilate', dilateFrame)
+            cv2.imshow('Dilate', dilateFrame)
             cv2.imshow('Target', targetFrame)
 
             if cv2.waitKey(33) == 27:
