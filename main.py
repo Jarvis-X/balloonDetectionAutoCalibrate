@@ -11,6 +11,10 @@ import os
 from sympy import Q
 from TrackingDetection import TrackingDetection
 
+# Constant for focal length, in pixels (must be changed per camera)
+GOALWIDTH = 1.60
+BALLONWIDTH = 0.33
+
 
 def parse_args():
     """Function to parse the system arguments"""
@@ -31,7 +35,22 @@ def parse_args():
         if sys.argv[1] == "picam":
             print("picamera in progress, exiting!")
             mode[0] = 0
-            sys.exit()
+            if len(sys.argv) == 3:
+                if int(sys.argv[2]) == 0:
+                    mode[1] = 0
+                    print("Balloon detection blob detection mode && Target detection webcam.")
+                elif int(sys.argv[2]) == 1:
+                    mode[1] = 1
+                    print("Balloon detection blob detection mode && Target detection picam.")
+                elif int(sys.argv[2]) == 2:
+                    mode[1] = 2
+                    print("Color calibration mode, please place the balloon in the center of the frame")
+                elif int(sys.argv[2]) == 3:
+                    mode[1] = 3
+                    print("Color calibration mode, please place the goal in the center of the frame")
+                else:
+                    print("Invalid mode for now, exiting!")
+                    sys.exit()
         else:
             assert sys.argv[1] == "cvcam"
             mode[0] = 1
@@ -49,7 +68,7 @@ def parse_args():
                     print("Balloon detection blob detection mode.")
                     mode[1] = 3
                 elif int(sys.argv[2]) == 4:
-                    print("Color calibration mode, please place the balloon in the center of the frame.")
+                    print("Color calibration mode, please place the goal in the center of the frame.")
                     mode[1] = 4
                 elif int(sys.argv[2]) == 5:
                     print("Target detection canny mode.")
@@ -192,10 +211,6 @@ def preprocess_frame(frame, blur_kernel_size, blur_method="average", size=(640, 
 
 def getBallonContours(detector, frame, frameContour, ratio, bcxdata, bcydata, disbdata):
 
-    # Constant for focal length, in pixels (must be changed per camera)
-    FOCAL_LENGTH = 1460
-    BALLONWIDTH = 0.33
-
     processed_frame = preprocess_frame(frame, mask_ROI_portion, size=frame.shape)
 
     blower = 0.75 * np.array([n_channel_data_b[0][0], n_channel_data_b[1][0], n_channel_data_b[2][0]])
@@ -249,11 +264,7 @@ def getBallonContours(detector, frame, frameContour, ratio, bcxdata, bcydata, di
 
 
 def getShapeContours(frame, frameContour, ratio, cxdata, cydata, radiusdata, disdata):
-
-    # Constant for focal length, in pixels (must be changed per camera)
-    FOCAL_LENGTH = 1460
-    GOALWIDTH = 1.60
-
+    
     contours, hierarchy = cv2.findContours(frame, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
     for cnt in contours:
         area = cv2.contourArea(cnt)
@@ -282,7 +293,6 @@ def getShapeContours(frame, frameContour, ratio, cxdata, cydata, radiusdata, dis
                 disdata.update(int(d))
                 print("Goal Distance=%.3fm" % disdata.get())
 
-
             cv2.drawContours(frameContour, cnt, -1, (255, 0, 255), 7)
             perimeter = cv2.arcLength(cnt, True)
             approx = cv2.approxPolyDP(cnt, 0.02 * perimeter, True)
@@ -301,44 +311,21 @@ def getShapeContours(frame, frameContour, ratio, cxdata, cydata, radiusdata, dis
     return frameContour
 
 
-def clearConsole():
-    os.system('cls' if os.name == 'nt' else 'clear')
-
-
 if __name__ == "__main__":
     # parse arguments
     mask_ROI_portion = 1 / 20
     mode = parse_args()
 
-    # initialize the pi camera or web camera and grab a reference to the raw camera capture
     if mode[0] == 0:
-        # TODO: picamera imports
-        # import the necessary packages
-        from picamera.array import PiRGBArray
-        from queue import Queue
-        from picamera import PiCamera
-
-        FOCAL_LENGTH = 640
-        BALLOON_WIDTH = 0.33
-
-        RES = (640, 480) # esolution
-        camera = PiCamera()
-        camera.resolution = RES
-        camera.framerate = 30
-        rawCapture = PiRGBArray(camera, size=RES)
-        # Constant for focal length, in pixels
-        FOCAL_LENGTH = 630
-        # Costant for ballon width, in meters
-        BALLOON_WIDTH = 0.33
-
-        time.sleep(0.1)
-        print("picamera support incoming")
-        sys.exit()
-        pass
-
+        FOCAL_LENGTH = 660
+        videoCapture = cv2.VideoCapture(0)
+        if not videoCapture.isOpened():
+            print("Failed to open cvcam!!!")
+            sys.exit()
+        
     else:
+
         FOCAL_LENGTH = 1460
-        BALLOON_WIDTH = 0.33
         videoCapture = cv2.VideoCapture(0)
         if not videoCapture.isOpened():
             print("Failed to open cvcam!!!")
@@ -348,7 +335,7 @@ if __name__ == "__main__":
     This mode allows the ballon and the goal to be detected simultaneously
     """
     if mode[1] == 0:
-        # detection mode using color filter
+
         # obtain the calibration file for the ballon
         try:
             with open("balloncolorinfo.dat", "rb") as file1:
@@ -420,16 +407,19 @@ if __name__ == "__main__":
             colorFrame = cv2.bitwise_and(frame, frame, mask=gmask)
             dilateFrame = cv2.dilate(gmask, kernel, iterations=0)
 
-            goalTargetFrame = getShapeContours(dilateFrame, frameContour, ratio, cxdata, cydata, radiusdata, disdata)
 
-            """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-            """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+            # detect the goal
+            goalTargetFrame = getShapeContours(dilateFrame, frameContour, ratio, cxdata, cydata, radiusdata, disdata)
+            cv2.imshow("goalTargetFrame", goalTargetFrame)
 
             # detect the ballon
             detector = init_BlobDetection()
-
             ballonTargetFrame = getBallonContours(detector, frame, frameContour, ratio, bcxdata, bcydata, disbdata)
+            cv2.imshow("ballonTargetFrame", ballonTargetFrame)
             
+            """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+            """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
             if cv2.waitKey(33) == 27:
                 # De-allocate any associated memory usage
                 cv2.destroyAllWindows()
