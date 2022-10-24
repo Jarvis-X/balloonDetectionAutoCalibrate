@@ -318,9 +318,9 @@ if __name__ == "__main__":
 
     if mode[0] == 0:
         FOCAL_LENGTH = 660
-        videoCapture = cv2.VideoCapture(0)
+        videoCapture = cv2.VideoCapture(1)
         if not videoCapture.isOpened():
-            print("Failed to open cvcam!!!")
+            print("Failed to open picam!!!")
             sys.exit()
         
     else:
