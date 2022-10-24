@@ -248,7 +248,7 @@ def getBallonContours(detector, frame, frameContour, ratio, bcxdata, bcydata, di
         # Get the number of blobs found
         if box_width:
             p = box_width             # perceived width, in pixels
-            w = BALLOON_WIDTH         # approx. actual width, in meters (pre-computed)
+            w = BALLOONWIDTH         # approx. actual width, in meters (pre-computed)
             f = FOCAL_LENGTH * ratio  # camera focal length, in pixels (pre-computed)
             d = f * w / p
             disbdata.update(d)
@@ -318,7 +318,7 @@ if __name__ == "__main__":
 
     if mode[0] == 0:
         FOCAL_LENGTH = 660
-        videoCapture = cv2.VideoCapture(1)
+        videoCapture = cv2.VideoCapture(0)
         if not videoCapture.isOpened():
             print("Failed to open picam!!!")
             sys.exit()
@@ -604,7 +604,7 @@ if __name__ == "__main__":
                 blobCount = len(keypoints)
                 if box_width:
                     p = box_width             # perceived width, in pixels
-                    w = BALLOON_WIDTH         # approx. actual width, in meters (pre-computed)
+                    w = BALLOONWIDTH          # approx. actual width, in meters (pre-computed)
                     f = FOCAL_LENGTH * ratio  # camera focal length, in pixels (pre-computed)
                     d = f * w / p
                     # cv2.putText(frame, "Distance=%.3fm" % d, (5, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 1)
