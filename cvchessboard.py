@@ -22,7 +22,7 @@ def calibrate(n = NUM_SAMPLES, debug=False):
 	print("Begin chessboard exercise!")
 
 	# start video capture
-	cap = cv2.VideoCapture(1)
+	cap = cv2.VideoCapture(0)
 	if not cap.isOpened():
 		print("No camera device found")
 		exit()
