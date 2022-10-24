@@ -40,14 +40,11 @@ def parse_args():
                     mode[1] = 0
                     print("Balloon detection blob detection mode && Target detection webcam.")
                 elif int(sys.argv[2]) == 1:
-                    mode[1] = 1
-                    print("Balloon detection blob detection mode && Target detection picam.")
-                elif int(sys.argv[2]) == 2:
                     mode[1] = 2
                     print("Color calibration mode, please place the balloon in the center of the frame")
-                elif int(sys.argv[2]) == 3:
-                    mode[1] = 3
-                    print("Color calibration mode, please place the goal in the center of the frame")
+                elif int(sys.argv[2]) == 4:
+                    print("Color calibration mode, please place the goal in the center of the frame.")
+                    mode[1] = 4
                 else:
                     print("Invalid mode for now, exiting!")
                     sys.exit()
