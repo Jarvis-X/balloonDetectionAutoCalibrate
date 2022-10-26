@@ -1,6 +1,32 @@
 # balloonDetectionAutoCalibrate
 A robotic blimp project submodule that allows users to calibrate for customized color. Find *# TODO* flags for pending tasks.
 
+
+## How-To
+
+### Ras-Pi
+
+### Calibrate the color of ballons
+Type in your terminal: `python main.py picam 2`
+
+### Calibrate the color of goals
+Type in your terminal: `python main.py picam 4`
+
+### Run program to get info from both ballons and goals
+Type in your terminal: `python main.py picam 0`
+
+### Laptop
+
+### Calibrate the color of ballons
+Type in your terminal: `python main.py cvcam 2`
+
+### Calibrate the color of goals
+Type in your terminal: `python main.py cvcam 4`
+
+### Run program to get info from both ballons and goals
+Type in your terminal: `python main.py cvcam 0`
+
+
 ## Components
 
 ### Ballon Detection
