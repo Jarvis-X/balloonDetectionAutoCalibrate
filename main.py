@@ -13,7 +13,7 @@ from TrackingDetection import TrackingDetection
 
 # Constant for focal length, in pixels (must be changed per camera)
 GOALWIDTH = 1.60
-BALLONWIDTH = 0.33
+BALLOONWIDTH = 0.33
 
 
 def parse_args():
