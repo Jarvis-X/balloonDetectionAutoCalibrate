@@ -7,7 +7,7 @@ A robotic blimp project submodule that allows users to calibrate for customized 
 ### Ras-Pi
 
 ### Calibrate the color of ballons
-Type in your terminal: `python main.py picam 2`
+Type in your terminal: `python main.py picam 1`
 
 ### Calibrate the color of goals
 Type in your terminal: `python main.py picam 4`
@@ -18,7 +18,7 @@ Type in your terminal: `python main.py picam 0`
 ### Laptop
 
 ### Calibrate the color of ballons
-Type in your terminal: `python main.py cvcam 2`
+Type in your terminal: `python main.py cvcam 1`
 
 ### Calibrate the color of goals
 Type in your terminal: `python main.py cvcam 4`
