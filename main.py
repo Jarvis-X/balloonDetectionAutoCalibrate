@@ -39,8 +39,8 @@ def parse_args():
                 if int(sys.argv[2]) == 0:
                     mode[1] = 0
                     print("Balloon detection blob detection mode && Target detection webcam.")
-                elif int(sys.argv[2]) == 2:
-                    mode[1] = 2
+                elif int(sys.argv[2]) == 1:
+                    mode[1] = 1
                     print("Color calibration mode, please place the balloon in the center of the frame")
                 elif int(sys.argv[2]) == 4:
                     print("Color calibration mode, please place the goal in the center of the frame.")
