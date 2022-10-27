@@ -39,7 +39,7 @@ def parse_args():
                 if int(sys.argv[2]) == 0:
                     mode[1] = 0
                     print("Balloon detection blob detection mode && Target detection webcam.")
-                elif int(sys.argv[2]) == 1:
+                elif int(sys.argv[2]) == 2:
                     mode[1] = 2
                     print("Color calibration mode, please place the balloon in the center of the frame")
                 elif int(sys.argv[2]) == 4:
@@ -315,7 +315,7 @@ if __name__ == "__main__":
 
     if mode[0] == 0:
         FOCAL_LENGTH = 660
-        videoCapture = cv2.VideoCapture(0)
+        videoCapture = cv2.VideoCapture(1)
         if not videoCapture.isOpened():
             print("Failed to open picam!!!")
             sys.exit()
