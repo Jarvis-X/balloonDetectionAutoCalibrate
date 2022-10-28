@@ -12,7 +12,8 @@ from sympy import Q
 from TrackingDetection import TrackingDetection
 
 # Constant for focal length, in pixels (must be changed per camera)
-GOALWIDTH = 1.60
+SQUAREWIDTH = 1.60
+TRIANGLEWIDTH = 1.96 # 2/sq(3)*170
 BALLOONWIDTH = 0.33
 
 
@@ -315,7 +316,7 @@ if __name__ == "__main__":
 
     if mode[0] == 0:
         FOCAL_LENGTH = 660
-        videoCapture = cv2.VideoCapture(1)
+        videoCapture = cv2.VideoCapture(0)
         if not videoCapture.isOpened():
             print("Failed to open picam!!!")
             sys.exit()
