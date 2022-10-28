@@ -284,8 +284,8 @@ def getShapeContours(frame, frameContour, ratio, cxdata, cydata, radiusdata, dis
                 f = FOCAL_LENGTH * ratio         # camera focal length, in pixels (pre-computed)
                 d = f * w / p
                 disdata.update(int(d))
-                print("Goal X:", cxdata.get())
-                print("Goal Y:", cydata.get())
+                print("Goal X:", int(cxdata.get()))
+                print("Goal Y:", int(cydata.get()))
                 print("Goal Distance=%.3fm" % disdata.get())
                 print()
 
