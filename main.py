@@ -23,6 +23,7 @@ BALLOONWIDTH = 0.33
 rospy.init_node("balloon_detection", anonymous=True)
 balloonpub = rospy.Publisher('balloon', Float64MultiArray, queue_size=1)
 goalpub = rospy.Publisher('target', Float64MultiArray, queue_size=1)
+framepub = rospy.Publisher('frameinfo', Float64MultiArray, queue_size=1)
 
 
 def parse_args():
@@ -410,6 +411,11 @@ if __name__ == "__main__":
             # resize the image
             frame = cv2.resize(frame, dim, interpolation=cv2.INTER_LINEAR)
             frameContour = frame.copy()
+            
+            # send frame dimensions
+            framemsg = Float64MultiArray()
+            framemsg.data = dim
+            framepub.publish(framemsg)
 
             """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
             """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
