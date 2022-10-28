@@ -311,7 +311,7 @@ def getShapeContours(frame, frameContour, ratio, cxdata, cydata, radiusdata, dis
 
 if __name__ == "__main__":
     # parse arguments
-    mask_ROI_portion = 1 / 20
+    mask_ROI_portion = 1 / 30
     mode = parse_args()
 
     if mode[0] == 0:
