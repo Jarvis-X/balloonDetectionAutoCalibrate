@@ -215,7 +215,9 @@ def preprocess_frame(frame, blur_kernel_size, blur_method="average", size=(640, 
     return preprocessed_frame
 
 
-def getBallonContours(detector, frame, frameContour, ratio, bcxdata, bcydata, disbdata, ballonmsg):
+def getBallonContours(detector, frame, frameContour, ratio, bcxdata, bcydata, disbdata, balloonmsg):
+
+    balloonmsg.data = [0, 0, 0, 0]
 
     processed_frame = preprocess_frame(frame, mask_ROI_portion, size=frame.shape)
 
@@ -276,6 +278,8 @@ def getBallonContours(detector, frame, frameContour, ratio, bcxdata, bcydata, di
 
 
 def getShapeContours(frame, frameContour, ratio, cxdata, cydata, radiusdata, disdata, goalmsg):
+
+    goalmsg.data = [0, 0, 0, 0]
     
     frames, contours, hierarchy = cv2.findContours(frame, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
     for cnt in contours:
