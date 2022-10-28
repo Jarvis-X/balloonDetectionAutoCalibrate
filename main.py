@@ -11,10 +11,18 @@ import os
 from sympy import Q
 from TrackingDetection import TrackingDetection
 
+import rospy
+from std_msgs.msg import Float64MultiArray
+
+
 # Constant for focal length, in pixels (must be changed per camera)
 SQUAREWIDTH = 1.60
 TRIANGLEWIDTH = 1.96 # 2/sq(3)*170
 BALLOONWIDTH = 0.33
+
+rospy.init_node()
+balloonpub = rospy.Publisher('balloon', Float64MultiArray, queue_size=1)
+goalpub = rospy.Publisher('target', Float64MultiArray, queue_size=1)
 
 
 def parse_args():
@@ -207,7 +215,7 @@ def preprocess_frame(frame, blur_kernel_size, blur_method="average", size=(640, 
     return preprocessed_frame
 
 
-def getBallonContours(detector, frame, frameContour, ratio, bcxdata, bcydata, disbdata):
+def getBallonContours(detector, frame, frameContour, ratio, bcxdata, bcydata, disbdata, ballonmsg):
 
     processed_frame = preprocess_frame(frame, mask_ROI_portion, size=frame.shape)
 
@@ -239,6 +247,7 @@ def getBallonContours(detector, frame, frameContour, ratio, bcxdata, bcydata, di
     keypoints = detector.detect(bmask)
 
     if len(keypoints) > 0:
+        balloonmsg.data[0] = 1
         if keypoints[0].size > 100:
             keypoints[0].size = keypoints[0].size - 20
         # Get the number of blobs found
@@ -249,9 +258,13 @@ def getBallonContours(detector, frame, frameContour, ratio, bcxdata, bcydata, di
             d = f * w / p
             disbdata.update(d)
             # cv2.putText(frame, "Distance=%.3fm" % d, (5, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 1)
+            balloonmsg.data[1] = int(bcxdata.get())
             print("Ballon Center X: ", int(bcxdata.get()))
+            balloonmsg.data[2] = int(bcydata.get())
             print("Ballon Center Y: ", int(bcydata.get()))
+            balloonmsg.data[3] = int(disbdata.get())
             print("Ballon Distance=%.3fm" % disbdata.get())
+            balloonpub.publish(balloonmsg)
             print()
 
     blank = np.zeros((1, 1))
@@ -262,7 +275,7 @@ def getBallonContours(detector, frame, frameContour, ratio, bcxdata, bcydata, di
     return frameContour
 
 
-def getShapeContours(frame, frameContour, ratio, cxdata, cydata, radiusdata, disdata):
+def getShapeContours(frame, frameContour, ratio, cxdata, cydata, radiusdata, disdata, goalmsg):
     
     frames, contours, hierarchy = cv2.findContours(frame, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
     for cnt in contours:
@@ -279,14 +292,19 @@ def getShapeContours(frame, frameContour, ratio, cxdata, cydata, radiusdata, dis
             cv2.circle(frameContour, center, radius=0, color=(0, 0, 255), thickness=10)
 
             if diag:
+                goalmsg.data[0] = 1
                 p = diag                         # perceived width, in pixels
                 w = SQUAREWIDTH                  # approx. actual width, in meters (pre-computed)
                 f = FOCAL_LENGTH * ratio         # camera focal length, in pixels (pre-computed)
                 d = f * w / p
                 disdata.update(int(d))
+                goalmsg.data[1] = int(cxdata.get())
                 print("Goal X:", int(cxdata.get()))
+                goalmsg.data[2] = int(cydata.get())
                 print("Goal Y:", int(cydata.get()))
+                goalmsg.data[3] = int(disdata.get())
                 print("Goal Distance=%.3fm" % disdata.get())
+                goalpub.publish(goalmsg)
                 print()
 
 
@@ -375,7 +393,7 @@ if __name__ == "__main__":
         dis_data = [0] * 15
         disdata = TrackingDetection(dis_data)
 
-        while True:
+        while not rospy.is_shutdown():
             # grab the raw NumPy array representing the image, then initialize the timestamp
             # and occupied/unoccupied text
             ret, frame = videoCapture.read()
@@ -404,14 +422,16 @@ if __name__ == "__main__":
             colorFrame = cv2.bitwise_and(frame, frame, mask=gmask)
             dilateFrame = cv2.dilate(gmask, kernel, iterations=0)
 
+            balloonmsg = Float64MultiArray()
+            goalmsg = Float64MultiArray()
 
             # detect the goal
-            goalTargetFrame = getShapeContours(dilateFrame, frameContour, ratio, cxdata, cydata, radiusdata, disdata)
+            goalTargetFrame = getShapeContours(dilateFrame, frameContour, ratio, cxdata, cydata, radiusdata, disdata, goalmsg)
             #cv2.imshow("goalTargetFrame", goalTargetFrame)
 
             # detect the ballon
             detector = init_BlobDetection()
-            ballonTargetFrame = getBallonContours(detector, frame, frameContour, ratio, bcxdata, bcydata, disbdata)
+            ballonTargetFrame = getBallonContours(detector, frame, frameContour, ratio, bcxdata, bcydata, disbdata, balloonmsg)
             #cv2.imshow("ballonTargetFrame", ballonTargetFrame)
             
             """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
