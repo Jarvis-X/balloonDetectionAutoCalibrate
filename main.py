@@ -272,8 +272,6 @@ def getShapeContours(frame, frameContour, ratio, cxdata, cydata, radiusdata, dis
             cxdata.update(int(sx))
             cydata.update(int(sy))
             radiusdata.update(int(radius))
-            cxdata.print()
-            cydata.print()
             center = (int(sx), int(sy))
             radius = int(radiusdata.get())
             diag = 2*radius
