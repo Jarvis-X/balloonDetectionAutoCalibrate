@@ -20,7 +20,7 @@ SQUAREWIDTH = 1.60
 TRIANGLEWIDTH = 1.96 # 2/sq(3)*170
 BALLOONWIDTH = 0.33
 
-rospy.init_node()
+rospy.init_node("balloon_detection", anonymous=True)
 balloonpub = rospy.Publisher('balloon', Float64MultiArray, queue_size=1)
 goalpub = rospy.Publisher('target', Float64MultiArray, queue_size=1)
 
