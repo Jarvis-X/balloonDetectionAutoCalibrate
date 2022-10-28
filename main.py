@@ -142,7 +142,7 @@ def find_and_bound_contours(mask, frame, areaThreshold=1500):
 
     # TODO: areaThread should depend on the frame size
     bounding_rects = []
-    contours, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    frame, contours, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     for _, contour in enumerate(contours):
         area = cv2.contourArea(contour)
         if area > areaThreshold:
@@ -263,7 +263,7 @@ def getBallonContours(detector, frame, frameContour, ratio, bcxdata, bcydata, di
 
 def getShapeContours(frame, frameContour, ratio, cxdata, cydata, radiusdata, disdata):
     
-    contours, hierarchy = cv2.findContours(frame, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    frames, contours, hierarchy = cv2.findContours(frame, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
     for cnt in contours:
         area = cv2.contourArea(cnt)
         if area > 1000:
@@ -285,7 +285,7 @@ def getShapeContours(frame, frameContour, ratio, cxdata, cydata, radiusdata, dis
 
             if diag:
                 p = diag                         # perceived width, in pixels
-                w = GOALWIDTH                    # approx. actual width, in meters (pre-computed)
+                w = SQUAREWIDTH                  # approx. actual width, in meters (pre-computed)
                 f = FOCAL_LENGTH * ratio         # camera focal length, in pixels (pre-computed)
                 d = f * w / p
                 disdata.update(int(d))
