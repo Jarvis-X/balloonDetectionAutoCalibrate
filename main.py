@@ -232,8 +232,6 @@ def getBallonContours(detector, frame, frameContour, ratio, bcxdata, bcydata, di
         bcydata.update(int(y + h / 2))
         x_avg = int(bcxdata.get())
         y_avg = int(bcydata.get())
-        print("Ballon Center X: ", x_avg)
-        print("Ballon Center Y: ", x_avg)
         center = (x_avg, y_avg)
         frameContour = cv2.circle(frame, center, radius=0, color=(0, 0, 255), thickness=10)
 
@@ -251,7 +249,10 @@ def getBallonContours(detector, frame, frameContour, ratio, bcxdata, bcydata, di
             d = f * w / p
             disbdata.update(d)
             # cv2.putText(frame, "Distance=%.3fm" % d, (5, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 1)
+            print("Ballon Center X: ", int(bcxdata.get()))
+            print("Ballon Center Y: ", int(bcydata.get()))
             print("Ballon Distance=%.3fm" % disbdata.get())
+            print()
 
     blank = np.zeros((1, 1))
 
@@ -271,11 +272,7 @@ def getShapeContours(frame, frameContour, ratio, cxdata, cydata, radiusdata, dis
             cxdata.update(int(sx))
             cydata.update(int(sy))
             radiusdata.update(int(radius))
-            print("Goal X:", cxdata.get())
-            print(sx)
             cxdata.print()
-            print("Goal Y:", cydata.get())
-            print(sy)
             cydata.print()
             center = (int(sx), int(sy))
             radius = int(radiusdata.get())
@@ -289,7 +286,11 @@ def getShapeContours(frame, frameContour, ratio, cxdata, cydata, radiusdata, dis
                 f = FOCAL_LENGTH * ratio         # camera focal length, in pixels (pre-computed)
                 d = f * w / p
                 disdata.update(int(d))
+                print("Goal X:", cxdata.get())
+                print("Goal Y:", cydata.get())
                 print("Goal Distance=%.3fm" % disdata.get())
+                print()
+
 
             cv2.drawContours(frameContour, cnt, -1, (255, 0, 255), 7)
             perimeter = cv2.arcLength(cnt, True)
