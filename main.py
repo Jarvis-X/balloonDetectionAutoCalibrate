@@ -408,12 +408,12 @@ if __name__ == "__main__":
 
             # detect the goal
             goalTargetFrame = getShapeContours(dilateFrame, frameContour, ratio, cxdata, cydata, radiusdata, disdata)
-            cv2.imshow("goalTargetFrame", goalTargetFrame)
+            #cv2.imshow("goalTargetFrame", goalTargetFrame)
 
             # detect the ballon
             detector = init_BlobDetection()
             ballonTargetFrame = getBallonContours(detector, frame, frameContour, ratio, bcxdata, bcydata, disbdata)
-            cv2.imshow("ballonTargetFrame", ballonTargetFrame)
+            #cv2.imshow("ballonTargetFrame", ballonTargetFrame)
             
             """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
             """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
