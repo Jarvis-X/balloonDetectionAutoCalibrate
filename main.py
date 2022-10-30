@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+
+
 # import the necessary packages
 import time
 import cv2
@@ -17,67 +20,88 @@ SQUAREWIDTH = 1.60
 TRIANGLEWIDTH = 1.96 # 2/sq(3)*170
 BALLOONWIDTH = 0.33
 
+<<<<<<< HEAD
+=======
+FRAMEX = 600
+FRAMEY = 600
+
+rospy.init_node("balloon_detection", anonymous=True)
+rate = rospy.Rate(5)
+balloonpub = rospy.Publisher('balloon', Float64MultiArray, queue_size=1)
+goalpub = rospy.Publisher('target', Float64MultiArray, queue_size=1)
+framepub = rospy.Publisher('frameinfo', Float64MultiArray, queue_size=1)
+
+>>>>>>> 56c6a18d3d86b7331d1b69b96fe0aecf80920ea7
 
 def parse_args():
     """Function to parse the system arguments"""
     # mode[0] defines frame obtaining methods - 0: picamera; 1: opencv camera
     # mode[1] defines operation mode - 0: detection mode; 1: calibration mode
     mode = [1, 0]
-    if len(sys.argv) < 2:
+    args = sys.argv
+    if len(args) == 5:
+        if args[3] == "__name:=cvMain":
+            args = args[0:3]
+    if len(args) < 2:
         print("ERROR: Insufficient arguments",
               "Please use the following form:",
               "python main.py <picam/cvcam> <1 if calibration mode else leave blank or input anything to nullify>")
         sys.exit()
-    elif len(sys.argv) > 3:
+    elif len(args) > 3:
+        print("error:", args)
         print("ERROR: Too many arguments",
               "Please use the following form:",
               "python main.py <picam/cvcam> <1 if calibration mode else leave blank or input anything to nullify>")
         sys.exit()
     else:
+<<<<<<< HEAD
         if sys.argv[1] == "picam":
             import rospy
             from std_msgs.msg import Float64MultiArray
             rospy.init_node("balloon_detection", anonymous=True)
             balloonpub = rospy.Publisher('balloon', Float64MultiArray, queue_size=1)
             goalpub = rospy.Publisher('target', Float64MultiArray, queue_size=1)
+=======
+        if args[1] == "picam":
+>>>>>>> 56c6a18d3d86b7331d1b69b96fe0aecf80920ea7
             print("picamera in progress, exiting!")
             mode[0] = 0
-            if len(sys.argv) == 3:
-                if int(sys.argv[2]) == 0:
+            if len(args) == 3:
+                if int(args[2]) == 0:
                     mode[1] = 0
                     print("Balloon detection blob detection mode && Target detection webcam.")
-                elif int(sys.argv[2]) == 1:
+                elif int(args[2]) == 1:
                     mode[1] = 1
                     print("Color calibration mode, please place the balloon in the center of the frame")
-                elif int(sys.argv[2]) == 4:
+                elif int(args[2]) == 4:
                     print("Color calibration mode, please place the goal in the center of the frame.")
                     mode[1] = 4
                 else:
                     print("Invalid mode for now, exiting!")
                     sys.exit()
         else:
-            assert sys.argv[1] == "cvcam"
+            assert args[1] == "cvcam"
             mode[0] = 1
-            if len(sys.argv) == 3:
-                if int(sys.argv[2]) == 0:
+            if len(args) == 3:
+                if int(args[2]) == 0:
                     mode[1] = 0
                     print("Balloon detection blob detection mode && Target detection color mode.")
-                elif int(sys.argv[2]) == 1:
+                elif int(args[2]) == 1:
                     mode[1] = 1
                     print("Color calibration mode, please place the balloon in the center of the frame")
-                elif int(sys.argv[2]) == 2:
+                elif int(args[2]) == 2:
                     print("Balloon detection color filter mode.")
                     mode[1] = 2
-                elif int(sys.argv[2]) == 3:
+                elif int(args[2]) == 3:
                     print("Balloon detection blob detection mode.")
                     mode[1] = 3
-                elif int(sys.argv[2]) == 4:
+                elif int(args[2]) == 4:
                     print("Color calibration mode, please place the goal in the center of the frame.")
                     mode[1] = 4
-                elif int(sys.argv[2]) == 5:
+                elif int(args[2]) == 5:
                     print("Target detection canny mode.")
                     mode[1] = 5
-                elif int(sys.argv[2]) == 6:
+                elif int(args[2]) == 6:
                     print("Target detection color mode.")
                     mode[1] = 6
                 else:
@@ -270,6 +294,7 @@ def getBallonContours(detector, frame, frameContour, ratio, bcxdata, bcydata, di
             d[i] = f * w / p[i]
             disbdata[i].update(d)
             # cv2.putText(frame, "Distance=%.3fm" % d, (5, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 1)
+<<<<<<< HEAD
             sendDis = min(disbdata[i].get())
             index = disbdata[i].get().index(sendDis)
             balloonmsg.data[1] = int(bcxdata[index].get())
@@ -278,8 +303,16 @@ def getBallonContours(detector, frame, frameContour, ratio, bcxdata, bcydata, di
             print("Ballon Center Y: ", int(bcydata[index].get()))
             balloonmsg.data[3] = sendDis
             print("Ballon Distance=%.3fm" % sendDis)
+=======
+            balloonmsg.data[1] = bcxdata.get()/FRAMEX
+            #print("Ballon Center X: ", bcxdata.get())/FRAMEX
+            balloonmsg.data[2] = bcydata.get()/FRAMEY
+            #print("Ballon Center Y: ", bcydata.get())/FRAMEY
+            balloonmsg.data[3] = disbdata.get()
+            #print("Ballon Distance=%.3fm" % disbdata.get())
+>>>>>>> 56c6a18d3d86b7331d1b69b96fe0aecf80920ea7
             balloonpub.publish(balloonmsg)
-            print()
+            #print()
 
     blank = np.zeros((1, 1))
 
@@ -314,14 +347,14 @@ def getShapeContours(frame, frameContour, ratio, cxdata, cydata, radiusdata, dis
                 f = FOCAL_LENGTH * ratio         # camera focal length, in pixels (pre-computed)
                 d = f * w / p
                 disdata.update(int(d))
-                goalmsg.data[1] = int(cxdata.get())
-                print("Goal X:", int(cxdata.get()))
-                goalmsg.data[2] = int(cydata.get())
-                print("Goal Y:", int(cydata.get()))
-                goalmsg.data[3] = int(disdata.get())
-                print("Goal Distance=%.3fm" % disdata.get())
+                goalmsg.data[1] = int(cxdata.get())/FRAMEX
+                #print("Goal X:", int(cxdata.get()))
+                goalmsg.data[2] = int(cydata.get())/FRAMEY
+                #print("Goal Y:", int(cydata.get()))
+                goalmsg.data[3] = disdata.get()
+                #print("Goal Distance=%.3fm" % disdata.get())
                 goalpub.publish(goalmsg)
-                print()
+                #print()
 
 
             cv2.drawContours(frameContour, cnt, -1, (255, 0, 255), 7)
@@ -386,7 +419,7 @@ if __name__ == "__main__":
 
         # allow the camera to warmup
         ret, frame = videoCapture.read()
-        time.sleep(0.1)
+        rate.sleep()
        
         # X and Y for the center of the ballon
         bcx_data = [None] * ([0] * 15)
@@ -413,15 +446,23 @@ if __name__ == "__main__":
             # grab the raw NumPy array representing the image, then initialize the timestamp
             # and occupied/unoccupied text
             ret, frame = videoCapture.read()
+            rate.sleep()
             if not ret:
                 print("Frame capture failed!!!")
                 break
-            # get the desierd frame size
+            # get the desired frame size
             ratio = 600 / frame.shape[1]
             dim = (600, int(frame.shape[0] * ratio))
+            FRAMEX = 600
+            FRAMEY =  int(frame.shape[0] * ratio)
             # resize the image
             frame = cv2.resize(frame, dim, interpolation=cv2.INTER_LINEAR)
             frameContour = frame.copy()
+            
+            # send frame dimensions
+            #framemsg = Float64MultiArray()
+            #framemsg.data = dim
+            #framepub.publish(framemsg)
 
             """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
             """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
@@ -442,7 +483,7 @@ if __name__ == "__main__":
             goalmsg = Float64MultiArray()
 
             # detect the goal
-            goalTargetFrame = getShapeContours(dilateFrame, frameContour, ratio, cxdata, cydata, radiusdata, disdata, goalmsg)
+            #goalTargetFrame = getShapeContours(dilateFrame, frameContour, ratio, cxdata, cydata, radiusdata, disdata, goalmsg)
             #cv2.imshow("goalTargetFrame", goalTargetFrame)
 
             # detect the ballon
@@ -470,7 +511,7 @@ if __name__ == "__main__":
         time_begin = time.time()
         frame_count = 0
         videoCapture.read()
-        time.sleep(1)
+        rate.sleep()
         while time.time() - time_begin < 5:
             frame_count += 1
             ret, frame = videoCapture.read()
@@ -515,7 +556,7 @@ if __name__ == "__main__":
 
         # allow the camera to warmup
         ret, frame = videoCapture.read()
-        time.sleep(0.1)
+        rate.sleep()
 
         # capture frames from the camera
         while True:
@@ -579,7 +620,7 @@ if __name__ == "__main__":
 
         # allow the camera to warmup
         ret, frame = videoCapture.read()
-        time.sleep(0.1)
+        rate.sleep()
         # capture frames from the camera
 
         cx_data = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
@@ -668,7 +709,7 @@ if __name__ == "__main__":
         time_begin = time.time()
         frame_count = 0
         videoCapture.read()
-        time.sleep(1)
+        rate.sleep()
         while time.time() - time_begin < 5:
             frame_count += 1
             ret, frame = videoCapture.read()
@@ -712,7 +753,7 @@ if __name__ == "__main__":
 
         # allow the camera to warmup
         ret, frame = videoCapture.read()
-        time.sleep(0.1)
+        rate.sleep()
 
         # capture frames from the camera
         while True:
@@ -770,7 +811,7 @@ if __name__ == "__main__":
 
         # allow the camera to warmup
         ret, frame = videoCapture.read()
-        time.sleep(0.1)
+        rate.sleep()
 
         # X and Y for the center of the goal
         cx_data = [0] * 15
