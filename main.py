@@ -398,12 +398,12 @@ if __name__ == "__main__":
         rate.sleep()
        
         # X and Y for the center of the ballon
-        bcx_data = ([0] * 15) * 10
+        bcx_data = [[0] * 15] * 10
         bcxdata = TrackingDetection(bcx_data)
-        bcy_data = ([0] * 15) * 10
+        bcy_data = [[0] * 15] * 10
         bcydata = TrackingDetection(bcy_data)
         # Distance of the ballon
-        disb_data = ([0] * 15) * 10
+        disb_data = [[0] * 15] * 10
         disbdata = TrackingDetection(disb_data)
 
         # X and Y for the center of the goal
