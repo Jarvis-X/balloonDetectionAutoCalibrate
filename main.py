@@ -11,18 +11,11 @@ import os
 from sympy import Q
 from TrackingDetection import TrackingDetection
 
-import rospy
-from std_msgs.msg import Float64MultiArray
-
 
 # Constant for focal length, in pixels (must be changed per camera)
 SQUAREWIDTH = 1.60
 TRIANGLEWIDTH = 1.96 # 2/sq(3)*170
 BALLOONWIDTH = 0.33
-
-rospy.init_node("balloon_detection", anonymous=True)
-balloonpub = rospy.Publisher('balloon', Float64MultiArray, queue_size=1)
-goalpub = rospy.Publisher('target', Float64MultiArray, queue_size=1)
 
 
 def parse_args():
@@ -42,6 +35,11 @@ def parse_args():
         sys.exit()
     else:
         if sys.argv[1] == "picam":
+            import rospy
+            from std_msgs.msg import Float64MultiArray
+            rospy.init_node("balloon_detection", anonymous=True)
+            balloonpub = rospy.Publisher('balloon', Float64MultiArray, queue_size=1)
+            goalpub = rospy.Publisher('target', Float64MultiArray, queue_size=1)
             print("picamera in progress, exiting!")
             mode[0] = 0
             if len(sys.argv) == 3:
@@ -139,7 +137,7 @@ def init_BlobDetection(minThreshold=10,             maxThreshold=220,
     return cv2.SimpleBlobDetector_create(params)
 
 
-def find_and_bound_contours(mask, frame, areaThreshold=1500):
+def find_and_bound_contours(mask, frame, areaThreshold=1500, numContours=0):
     """
     find contours on the mask and draw the bounding boxes at the corresponding positions on the frame
     :param mask: the binary mask to detect the contours on
@@ -149,13 +147,18 @@ def find_and_bound_contours(mask, frame, areaThreshold=1500):
     """
 
     # TODO: areaThread should depend on the frame size
-    bounding_rects = []
+    bounding_rects = [None] * numContours
+    x = [None] * numContours
+    y = [None] * numContours
+    w = [None] * numContours
+    h = [None] * numContours
+    area = [None] * numContours
     frame, contours, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    for _, contour in enumerate(contours):
-        area = cv2.contourArea(contour)
-        if area > areaThreshold:
-            x, y, w, h = cv2.boundingRect(contour)
-            bounding_rects.append([x, y, w, h])
+    for i, contour in enumerate(contours):
+        area[i] = cv2.contourArea(contour)
+        if area[i] > areaThreshold:
+            x[i], y[i], w[i], h[i] = cv2.boundingRect(contour) 
+            bounding_rects.append([x[i], y[i], w[i], h[i]])
 
     return bounding_rects
 
@@ -232,40 +235,49 @@ def getBallonContours(detector, frame, frameContour, ratio, bcxdata, bcydata, di
 
     bmask = cv2.erode(bmask, np.ones((dilate_kernel_size, dilate_kernel_size)), iterations=2)
 
-    box_width = 0
-    bounding_rects = find_and_bound_contours(bmask, frame)
-    for bounding_rect in bounding_rects:
-        x, y, w, h = bounding_rect  # create bonding box
-        box_width = w
-        cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
-        bcxdata.update(int(x + w / 2))
-        bcydata.update(int(y + h / 2))
-        x_avg = int(bcxdata.get())
-        y_avg = int(bcydata.get())
-        center = (x_avg, y_avg)
-        frameContour = cv2.circle(frame, center, radius=0, color=(0, 0, 255), thickness=10)
-
     # Detect blobs
     keypoints = detector.detect(bmask)
+    bounding_rects = find_and_bound_contours(bmask, frame, numContours=len(keypoints))
+    x = [None] * len(bounding_rects)
+    y = [None] * len(bounding_rects)
+    w = [None] * len(bounding_rects)
+    h = [None] * len(bounding_rects)
+    x_avg = [None] * len(bounding_rects)
+    y_avg = [None] * len(bounding_rects)
+    center = [None] * len(bounding_rects)
+    box_width = [None] * len(bounding_rects)
+    for i, bounding_rect in enumerate(bounding_rects):
+        x[i], y[i], w[i], h[i] = bounding_rect  # create bonding box
+        box_width[i] = w[i]
+        cv2.rectangle(frame, (x[i], y[i]), (x[i] + w[i], y[i] + h[i]), (0, 255, 0), 2)
+        bcxdata[i].update(int(x[i] + w[i] / 2))
+        bcydata[i].update(int(y[i] + h[i] / 2))
+        x_avg[i] = int(bcxdata[i].get())
+        y_avg[i] = int(bcydata[i].get())
+        center[i] = (x_avg[i], y_avg[i])
+        frameContour = cv2.circle(frame, center[i], radius=0, color=(0, 0, 255), thickness=10)
 
     if len(keypoints) > 0:
         balloonmsg.data[0] = 1
         if keypoints[0].size > 100:
             keypoints[0].size = keypoints[0].size - 20
         # Get the number of blobs found
-        if box_width:
-            p = box_width             # perceived width, in pixels
+        p = [None] * len(box_width)
+        for i in len(box_width):
+            p[i] = box_width[i]             # perceived width, in pixels
             w = BALLOONWIDTH         # approx. actual width, in meters (pre-computed)
             f = FOCAL_LENGTH * ratio  # camera focal length, in pixels (pre-computed)
-            d = f * w / p
-            disbdata.update(d)
+            d[i] = f * w / p[i]
+            disbdata[i].update(d)
             # cv2.putText(frame, "Distance=%.3fm" % d, (5, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 1)
-            balloonmsg.data[1] = int(bcxdata.get())
-            print("Ballon Center X: ", int(bcxdata.get()))
-            balloonmsg.data[2] = int(bcydata.get())
-            print("Ballon Center Y: ", int(bcydata.get()))
-            balloonmsg.data[3] = int(disbdata.get())
-            print("Ballon Distance=%.3fm" % disbdata.get())
+            sendDis = min(disbdata[i].get())
+            index = disbdata[i].get().index(sendDis)
+            balloonmsg.data[1] = int(bcxdata[index].get())
+            print("Ballon Center X: ", int(bcxdata[index].get()))
+            balloonmsg.data[2] = int(bcydata[index].get())
+            print("Ballon Center Y: ", int(bcydata[index].get()))
+            balloonmsg.data[3] = sendDis
+            print("Ballon Distance=%.3fm" % sendDis)
             balloonpub.publish(balloonmsg)
             print()
 
@@ -377,12 +389,12 @@ if __name__ == "__main__":
         time.sleep(0.1)
        
         # X and Y for the center of the ballon
-        bcx_data = [0] * 15
+        bcx_data = [None] * ([0] * 15)
         bcxdata = TrackingDetection(bcx_data)
-        bcy_data = [0] * 15
+        bcy_data = [None] * ([0] * 15)
         bcydata = TrackingDetection(bcy_data)
         # Distance of the ballon
-        disb_data = [0] * 15
+        disb_data = [None] * ([0] * 15)
         disbdata = TrackingDetection(disb_data)
 
         # X and Y for the center of the goal
