@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-
 # import the necessary packages
 import time
 import cv2
@@ -13,6 +12,9 @@ import os
 
 from sympy import Q
 from TrackingDetection import TrackingDetection
+
+import rospy
+from std_msgs.msg import Float64MultiArray
 
 
 # Constant for focal length, in pixels (must be changed per camera)
