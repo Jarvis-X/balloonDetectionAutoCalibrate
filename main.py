@@ -20,8 +20,6 @@ SQUAREWIDTH = 1.60
 TRIANGLEWIDTH = 1.96 # 2/sq(3)*170
 BALLOONWIDTH = 0.33
 
-<<<<<<< HEAD
-=======
 FRAMEX = 600
 FRAMEY = 600
 
@@ -31,7 +29,6 @@ balloonpub = rospy.Publisher('balloon', Float64MultiArray, queue_size=1)
 goalpub = rospy.Publisher('target', Float64MultiArray, queue_size=1)
 framepub = rospy.Publisher('frameinfo', Float64MultiArray, queue_size=1)
 
->>>>>>> 56c6a18d3d86b7331d1b69b96fe0aecf80920ea7
 
 def parse_args():
     """Function to parse the system arguments"""
@@ -54,16 +51,7 @@ def parse_args():
               "python main.py <picam/cvcam> <1 if calibration mode else leave blank or input anything to nullify>")
         sys.exit()
     else:
-<<<<<<< HEAD
-        if sys.argv[1] == "picam":
-            import rospy
-            from std_msgs.msg import Float64MultiArray
-            rospy.init_node("balloon_detection", anonymous=True)
-            balloonpub = rospy.Publisher('balloon', Float64MultiArray, queue_size=1)
-            goalpub = rospy.Publisher('target', Float64MultiArray, queue_size=1)
-=======
         if args[1] == "picam":
->>>>>>> 56c6a18d3d86b7331d1b69b96fe0aecf80920ea7
             print("picamera in progress, exiting!")
             mode[0] = 0
             if len(args) == 3:
@@ -294,7 +282,6 @@ def getBallonContours(detector, frame, frameContour, ratio, bcxdata, bcydata, di
             d[i] = f * w / p[i]
             disbdata[i].update(d)
             # cv2.putText(frame, "Distance=%.3fm" % d, (5, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 1)
-<<<<<<< HEAD
             sendDis = min(disbdata[i].get())
             index = disbdata[i].get().index(sendDis)
             balloonmsg.data[1] = int(bcxdata[index].get())
@@ -303,14 +290,6 @@ def getBallonContours(detector, frame, frameContour, ratio, bcxdata, bcydata, di
             print("Ballon Center Y: ", int(bcydata[index].get()))
             balloonmsg.data[3] = sendDis
             print("Ballon Distance=%.3fm" % sendDis)
-=======
-            balloonmsg.data[1] = bcxdata.get()/FRAMEX
-            #print("Ballon Center X: ", bcxdata.get())/FRAMEX
-            balloonmsg.data[2] = bcydata.get()/FRAMEY
-            #print("Ballon Center Y: ", bcydata.get())/FRAMEY
-            balloonmsg.data[3] = disbdata.get()
-            #print("Ballon Distance=%.3fm" % disbdata.get())
->>>>>>> 56c6a18d3d86b7331d1b69b96fe0aecf80920ea7
             balloonpub.publish(balloonmsg)
             #print()
 
