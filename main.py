@@ -166,11 +166,10 @@ def find_and_bound_contours(mask, frame, areaThreshold=1500, numContours=0):
     y = [0] * numContours
     w = [0] * numContours
     h = [0] * numContours
-    area = [0] * numContours
     contours, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     for i, contour in enumerate(contours):
-        area[i] = cv2.contourArea(contour)
-        if area[i] > areaThreshold:
+        area = cv2.contourArea(contour)
+        if area > areaThreshold:
             x[i], y[i], w[i], h[i] = cv2.boundingRect(contour) 
             bounding_rects.append([x[i], y[i], w[i], h[i]])
 
@@ -470,7 +469,7 @@ if __name__ == "__main__":
             # detect the ballon
             detector = init_BlobDetection()
             ballonTargetFrame = getBallonContours(detector, frame, frameContour, ratio, bcxdata, bcydata, disbdata, balloonmsg)
-            #cv2.imshow("ballonTargetFrame", ballonTargetFrame)
+            cv2.imshow("ballonTargetFrame", ballonTargetFrame)
             
             """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
             """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
