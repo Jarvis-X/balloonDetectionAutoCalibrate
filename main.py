@@ -162,16 +162,12 @@ def find_and_bound_contours(mask, frame, areaThreshold=1500, numContours=0):
 
     # TODO: areaThread should depend on the frame size
     bounding_rects = [None] * numContours
-    x = [0] * numContours
-    y = [0] * numContours
-    w = [0] * numContours
-    h = [0] * numContours
     contours, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     for i, contour in enumerate(contours):
         area = cv2.contourArea(contour)
         if area > areaThreshold:
-            x[i], y[i], w[i], h[i] = cv2.boundingRect(contour) 
-            bounding_rects.append([x[i], y[i], w[i], h[i]])
+            x, y, w, h = cv2.boundingRect(contour) 
+            bounding_rects.append([x, y, w, h])
 
     return bounding_rects
 
