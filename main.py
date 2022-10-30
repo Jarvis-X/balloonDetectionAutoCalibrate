@@ -162,11 +162,11 @@ def find_and_bound_contours(mask, frame, areaThreshold=1500, numContours=0):
 
     # TODO: areaThread should depend on the frame size
     bounding_rects = [None] * numContours
-    x = [None] * numContours
-    y = [None] * numContours
-    w = [None] * numContours
-    h = [None] * numContours
-    area = [None] * numContours
+    x = [0] * numContours
+    y = [0] * numContours
+    w = [0] * numContours
+    h = [0] * numContours
+    area = [0] * numContours
     frame, contours, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     for i, contour in enumerate(contours):
         area[i] = cv2.contourArea(contour)
@@ -252,14 +252,14 @@ def getBallonContours(detector, frame, frameContour, ratio, bcxdata, bcydata, di
     # Detect blobs
     keypoints = detector.detect(bmask)
     bounding_rects = find_and_bound_contours(bmask, frame, numContours=len(keypoints))
-    x = [None] * len(bounding_rects)
-    y = [None] * len(bounding_rects)
-    w = [None] * len(bounding_rects)
-    h = [None] * len(bounding_rects)
-    x_avg = [None] * len(bounding_rects)
-    y_avg = [None] * len(bounding_rects)
-    center = [None] * len(bounding_rects)
-    box_width = [None] * len(bounding_rects)
+    x = [0] * len(bounding_rects)
+    y = [0] * len(bounding_rects)
+    w = [0] * len(bounding_rects)
+    h = [0] * len(bounding_rects)
+    x_avg = [0] * len(bounding_rects)
+    y_avg = [0] * len(bounding_rects)
+    center = [0] * len(bounding_rects)
+    box_width = [0] * len(bounding_rects)
     for i, bounding_rect in enumerate(bounding_rects):
         x[i], y[i], w[i], h[i] = bounding_rect  # create bonding box
         box_width[i] = w[i]
@@ -403,12 +403,12 @@ if __name__ == "__main__":
         rate.sleep()
        
         # X and Y for the center of the ballon
-        bcx_data = [None] * ([0] * 15)
+        bcx_data = ([0] * 15) * 10
         bcxdata = TrackingDetection(bcx_data)
-        bcy_data = [None] * ([0] * 15)
+        bcy_data = ([0] * 15) * 10
         bcydata = TrackingDetection(bcy_data)
         # Distance of the ballon
-        disb_data = [None] * ([0] * 15)
+        disb_data = ([0] * 15) * 10
         disbdata = TrackingDetection(disb_data)
 
         # X and Y for the center of the goal
