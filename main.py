@@ -247,17 +247,18 @@ def getBallonContours(detector, frame, frameContour, ratio, bcxdata, bcydata, di
     # Detect blobs
     keypoints = detector.detect(bmask)
     bounding_rects = find_and_bound_contours(bmask, frame, numContours=len(keypoints))
-    x = [0] * len(bounding_rects)
-    y = [0] * len(bounding_rects)
-    w = [0] * len(bounding_rects)
-    h = [0] * len(bounding_rects)
-    x_avg = [0] * len(bounding_rects)
-    y_avg = [0] * len(bounding_rects)
-    center = [0] * len(bounding_rects)
-    box_width = [0] * len(bounding_rects)
 
     if len(bounding_rects) > 0:
+        x = [0] * len(bounding_rects)
+        y = [0] * len(bounding_rects)
+        w = [0] * len(bounding_rects)
+        h = [0] * len(bounding_rects)
+        x_avg = [0] * len(bounding_rects)
+        y_avg = [0] * len(bounding_rects)
+        center = [0] * len(bounding_rects)
+        box_width = [0] * len(bounding_rects)
         for i, bounding_rect in enumerate(bounding_rects):
+            print(bounding_rect)
             x[i], y[i], w[i], h[i] = bounding_rect  # create bonding box
             box_width[i] = w[i]
             cv2.rectangle(frame, (x[i], y[i]), (x[i] + w[i], y[i] + h[i]), (0, 255, 0), 2)
