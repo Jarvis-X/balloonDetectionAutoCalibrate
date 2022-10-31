@@ -1,4 +1,5 @@
 import numpy as np
+
 class TrackingDetection:
     """
     The class to process the raw detection results from the camera and opencv
