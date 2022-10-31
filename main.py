@@ -167,7 +167,7 @@ def find_and_bound_contours(mask, frame, areaThreshold=1500, numContours=0):
         area = cv2.contourArea(contour)
         if area > areaThreshold:
             x, y, w, h = cv2.boundingRect(contour) 
-            bounding_rects.append([x, y, w, h])
+            bounding_rects[i] = [x, y, w, h]
 
     return bounding_rects
 
@@ -258,16 +258,16 @@ def getBallonContours(detector, frame, frameContour, ratio, bcxdata, bcydata, di
         center = [0] * len(bounding_rects)
         box_width = [0] * len(bounding_rects)
         for i, bounding_rect in enumerate(bounding_rects):
-            print(bounding_rect)
-            x[i], y[i], w[i], h[i] = bounding_rect  # create bonding box
-            box_width[i] = w[i]
-            cv2.rectangle(frame, (x[i], y[i]), (x[i] + w[i], y[i] + h[i]), (0, 255, 0), 2)
-            bcxdata[i].update(int(x[i] + w[i] / 2))
-            bcydata[i].update(int(y[i] + h[i] / 2))
-            x_avg[i] = int(bcxdata[i].get())
-            y_avg[i] = int(bcydata[i].get())
-            center[i] = (x_avg[i], y_avg[i])
-            frameContour = cv2.circle(frame, center[i], radius=0, color=(0, 0, 255), thickness=10)
+            if bounding_rect is not None:
+                x[i], y[i], w[i], h[i] = bounding_rect  # create bonding box
+                box_width[i] = w[i]
+                cv2.rectangle(frame, (x[i], y[i]), (x[i] + w[i], y[i] + h[i]), (0, 255, 0), 2)
+                bcxdata[i].update(int(x[i] + w[i] / 2))
+                bcydata[i].update(int(y[i] + h[i] / 2))
+                x_avg[i] = int(bcxdata[i].get())
+                y_avg[i] = int(bcydata[i].get())
+                center[i] = (x_avg[i], y_avg[i])
+                frameContour = cv2.circle(frame, center[i], radius=0, color=(0, 0, 255), thickness=10)
 
     if len(keypoints) > 0:
         balloonmsg.data[0] = 1
