@@ -151,7 +151,7 @@ def init_BlobDetection(minThreshold=10,             maxThreshold=220,
     return cv2.SimpleBlobDetector_create(params)
 
 
-def find_and_bound_contours(mask, frame, areaThreshold=1500, numContours=0):
+def find_and_bound_contours(mask, frame, areaThreshold=1500):
     """
     find contours on the mask and draw the bounding boxes at the corresponding positions on the frame
     :param mask: the binary mask to detect the contours on
@@ -161,13 +161,13 @@ def find_and_bound_contours(mask, frame, areaThreshold=1500, numContours=0):
     """
 
     # TODO: areaThread should depend on the frame size
-    bounding_rects = [None] * numContours
+    bounding_rects = []
     contours, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     for i, contour in enumerate(contours):
         area = cv2.contourArea(contour)
         if area > areaThreshold:
             x, y, w, h = cv2.boundingRect(contour) 
-            bounding_rects[i] = [x, y, w, h]
+            bounding_rects.append([x, y, w, h])
 
     return bounding_rects
 
@@ -244,9 +244,7 @@ def getBallonContours(detector, frame, frameContour, ratio, bcxdata, bcydata, di
 
     bmask = cv2.erode(bmask, np.ones((dilate_kernel_size, dilate_kernel_size)), iterations=2)
 
-    # Detect blobs
-    keypoints = detector.detect(bmask)
-    bounding_rects = find_and_bound_contours(bmask, frame, numContours=len(keypoints))
+    bounding_rects = find_and_bound_contours(bmask, frame)
 
     if len(bounding_rects) > 0:
         x = [0] * len(bounding_rects)
@@ -258,19 +256,22 @@ def getBallonContours(detector, frame, frameContour, ratio, bcxdata, bcydata, di
         center = [0] * len(bounding_rects)
         box_width = [0] * len(bounding_rects)
         for i, bounding_rect in enumerate(bounding_rects):
-            if bounding_rect is not None:
-                x[i], y[i], w[i], h[i] = bounding_rect  # create bonding box
-                box_width[i] = w[i]
-                cv2.rectangle(frame, (x[i], y[i]), (x[i] + w[i], y[i] + h[i]), (0, 255, 0), 2)
-                bcxdata[i].update(int(x[i] + w[i] / 2))
-                bcydata[i].update(int(y[i] + h[i] / 2))
-                x_avg[i] = int(bcxdata[i].get())
-                y_avg[i] = int(bcydata[i].get())
-                center[i] = (x_avg[i], y_avg[i])
-                frameContour = cv2.circle(frame, center[i], radius=0, color=(0, 0, 255), thickness=10)
+            x[i], y[i], w[i], h[i] = bounding_rect  # create bonding box
+            box_width[i] = w[i]
+            cv2.rectangle(frame, (x[i], y[i]), (x[i] + w[i], y[i] + h[i]), (0, 255, 0), 2)
+            bcxdata[i].update(int(x[i] + w[i] / 2))
+            bcydata[i].update(int(y[i] + h[i] / 2))
+            x_avg[i] = int(bcxdata[i].get())
+            y_avg[i] = int(bcydata[i].get())
+            center[i] = (x_avg[i], y_avg[i])
+            print("center", center[i])
+            frameContour = cv2.circle(frame, center[i], radius=0, color=(0, 0, 255), thickness=10)
 
+    # Detect blobs
+    keypoints = detector.detect(bmask)
     if len(keypoints) > 0:
         balloonmsg.data[0] = 1
+        print(keypoints.center)
         if keypoints[0].size > 100:
             keypoints[0].size = keypoints[0].size - 20
         # Get the number of blobs found
