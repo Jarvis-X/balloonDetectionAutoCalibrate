@@ -406,6 +406,7 @@ if __name__ == "__main__":
        
         # X and Y for the center of the ballon
         bcx_data = [[0] * 15 for _ in range(10)]
+        print(len(bcx_data))
         bcxdata = [None] * len(bcx_data)
         for i in range(len(bcx_data)):
             bcxdata[i] = TrackingDetection(bcx_data[i])
