@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 # import the necessary packages
+from asyncio.windows_events import NULL
 import time
 import cv2
 from cv2 import threshold
@@ -290,6 +291,8 @@ def getBallonContours(detector, frame, frameContour, ratio, bcxdata, bcydata, di
             list = [0] * len(disbdata)
             for j in range(len(disbdata)):
                 list[j] = disbdata[j].get()
+                if list[j] == 0:
+                    list[j] = NULL
             sendDis = min(list)
             index = list.index(sendDis)
             balloonmsg.data[1] = int(bcxdata[index].get())
