@@ -285,8 +285,11 @@ def getBallonContours(detector, frame, frameContour, ratio, bcxdata, bcydata, di
             f = FOCAL_LENGTH * ratio  # camera focal length, in pixels (pre-computed)
             d[i] = f * w / p[i]
             disbdata[i].update(d[i])
-            # cv2.putText(frame, "Distance=%.3fm" % d, (5, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 1)
-            sendDis = min(disbdata.get())
+            # cv2.putText(frame, "Distance=%.3fm" % d, (5, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 1)\
+            list = [0] * 10
+            for j in range(len(disbdata)):
+                list[j] = disbdata[j].get()
+            sendDis = min(list)
             index = disbdata[i].get().index(sendDis)
             balloonmsg.data[1] = int(bcxdata[index].get())
             print("Ballon Center X: ", int(bcxdata[index].get()))
