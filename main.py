@@ -264,21 +264,21 @@ def getBallonContours(detector, frame, frameContour, ratio, bcxdata, bcydata, di
             x_avg[i] = int(bcxdata[i].get())
             y_avg[i] = int(bcydata[i].get())
             center[i] = (x_avg[i], y_avg[i])
-            print("center", center[i])
+            #print("center", center[i])
             frameContour = cv2.circle(frame, center[i], radius=0, color=(0, 0, 255), thickness=10)
 
     # Detect blobs
     keypoints = detector.detect(bmask)
     if len(keypoints) > 0:
         balloonmsg.data[0] = 1
-        print("keypoints")
-        print(keypoints[0].pt[0], keypoints[0].pt[1])
+        #print("keypoints")
+        #print(keypoints[0].pt[0], keypoints[0].pt[1])
         if keypoints[0].size > 100:
             keypoints[0].size = keypoints[0].size - 20
         # Get the number of blobs found
         p = [0] * len(box_width)
-        print(len(keypoints))
-        print(len(box_width))
+        #print(len(keypoints))
+        #print(len(box_width))
         d = [0] * len(box_width)
         for i in range(len(box_width)):
             p[i] = box_width[i]             # perceived width, in pixels
@@ -287,7 +287,7 @@ def getBallonContours(detector, frame, frameContour, ratio, bcxdata, bcydata, di
             d[i] = f * w / p[i]
             disbdata[i].update(d[i])
             # cv2.putText(frame, "Distance=%.3fm" % d, (5, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 1)\
-            list = [0] * 10
+            list = [0] * len(disbdata)
             for j in range(len(disbdata)):
                 list[j] = disbdata[j].get()
             sendDis = min(list)
