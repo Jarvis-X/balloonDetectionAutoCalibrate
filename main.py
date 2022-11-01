@@ -438,8 +438,8 @@ if __name__ == "__main__":
         while not rospy.is_shutdown():
             # grab the raw NumPy array representing the image, then initialize the timestamp
             # and occupied/unoccupied text
-            ret, frame = videoCapture.read()
             rate.sleep()
+            ret, frame = videoCapture.read()
             if not ret:
                 print("Frame capture failed!!!")
                 break
