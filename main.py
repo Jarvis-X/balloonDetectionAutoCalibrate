@@ -292,7 +292,7 @@ def getBallonContours(detector, frame, frameContour, ratio, bcxdata, bcydata, di
             for j in range(len(disbdata)):
                 list[j] = disbdata[j].get()
                 if list[j] == 0:
-                    list[j] = NULL
+                    list[j] = float('inf')
             sendDis = min(list)
             index = list.index(sendDis)
             balloonmsg.data[1] = int(bcxdata[index].get())
