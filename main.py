@@ -271,7 +271,8 @@ def getBallonContours(detector, frame, frameContour, ratio, bcxdata, bcydata, di
     keypoints = detector.detect(bmask)
     if len(keypoints) > 0:
         balloonmsg.data[0] = 1
-        print(keypoints.center)
+        print("keypoints")
+        print(keypoints[0].x, keypoints[0].y)
         if keypoints[0].size > 100:
             keypoints[0].size = keypoints[0].size - 20
         # Get the number of blobs found
