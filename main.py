@@ -276,9 +276,9 @@ def getBallonContours(detector, frame, frameContour, ratio, bcxdata, bcydata, di
         if keypoints[0].size > 100:
             keypoints[0].size = keypoints[0].size - 20
         # Get the number of blobs found
-        p = [None] * len(box_width)
-        print(len(box_width))
-        d = [] * len(box_width)
+        p = [0] * len(keypoints)
+        print(len(keypoints))
+        d = [0] * len(keypoints)
         for i in range(len(box_width)):
             p[i] = box_width[i]             # perceived width, in pixels
             w = BALLOONWIDTH         # approx. actual width, in meters (pre-computed)
