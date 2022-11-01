@@ -272,13 +272,13 @@ def getBallonContours(detector, frame, frameContour, ratio, bcxdata, bcydata, di
     if len(keypoints) > 0:
         balloonmsg.data[0] = 1
         print("keypoints")
-        print(keypoints[0], keypoints[0])
+        print(keypoints[0].pt[0], keypoints[0].pt[1])
         if keypoints[0].size > 100:
             keypoints[0].size = keypoints[0].size - 20
         # Get the number of blobs found
         p = [None] * len(box_width)
         print(len(box_width))
-        for i in len(box_width):
+        for i in range(len(box_width)):
             p[i] = box_width[i]             # perceived width, in pixels
             w = BALLOONWIDTH         # approx. actual width, in meters (pre-computed)
             f = FOCAL_LENGTH * ratio  # camera focal length, in pixels (pre-computed)
