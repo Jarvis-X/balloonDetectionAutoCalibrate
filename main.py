@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 # import the necessary packages
-from asyncio.windows_events import NULL
 import time
 import cv2
 from cv2 import threshold
