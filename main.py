@@ -286,7 +286,7 @@ def getBallonContours(detector, frame, frameContour, ratio, bcxdata, bcydata, di
             d[i] = f * w / p[i]
             disbdata[i].update(d[i])
             # cv2.putText(frame, "Distance=%.3fm" % d, (5, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 1)
-            sendDis = min(disbdata[i].get())
+            sendDis = min(disbdata.get())
             index = disbdata[i].get().index(sendDis)
             balloonmsg.data[1] = int(bcxdata[index].get())
             print("Ballon Center X: ", int(bcxdata[index].get()))
@@ -406,7 +406,6 @@ if __name__ == "__main__":
        
         # X and Y for the center of the ballon
         bcx_data = [[0] * 15 for _ in range(10)]
-        print(len(bcx_data))
         bcxdata = [None] * len(bcx_data)
         for i in range(len(bcx_data)):
             bcxdata[i] = TrackingDetection(bcx_data[i])
