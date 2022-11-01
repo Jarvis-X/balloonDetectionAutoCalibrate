@@ -290,7 +290,7 @@ def getBallonContours(detector, frame, frameContour, ratio, bcxdata, bcydata, di
             for j in range(len(disbdata)):
                 list[j] = disbdata[j].get()
             sendDis = min(list)
-            index = disbdata[i].get().index(sendDis)
+            index = list.index(sendDis)
             balloonmsg.data[1] = int(bcxdata[index].get())
             print("Ballon Center X: ", int(bcxdata[index].get()))
             balloonmsg.data[2] = int(bcydata[index].get())
