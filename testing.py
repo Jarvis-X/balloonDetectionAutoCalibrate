@@ -1,4 +1,6 @@
 import sys
+
+from cv2 import VideoCapture
 from TrackingDetection import TrackingDetection
 import numpy as np
 import cv2
@@ -6,7 +8,7 @@ import cv2
 FOCAL_LENGTH = 1460
 
 # Generate a MultiTracker object    
-multi_tracker = cv2.MultiTracker_create()
+multi_tracker = cv2.legacy.MultiTracker_create()
 tracker = cv2.TrackerCSRT_create()
  
 # Set bounding box drawing parameters
@@ -22,7 +24,7 @@ success, frame = videoCapture.read()
 bounding_box_list = []
 color_list = []   
  
-  # Do we have a video frame? If true, proceed.
+# Do we have a video frame? If true, proceed.
 if success:
  
     while True:
@@ -39,13 +41,6 @@ if success:
         green = 0 # randint(127, 255)
         red = 255 #randint(127, 255)
         color_list.append((blue, green, red))
-    
-        # Press 'q' (make sure you click on the video frame so that it is the
-        # active window) to start object tracking. You can press another key
-        # if you want to draw another bounding box.           
-        print("\nPress q to begin tracking objects or press " +
-            "another key to draw the next bounding box\n")
-    
         # Wait for keypress
         k = cv2.waitKey() & 0xFF
     
@@ -56,6 +51,42 @@ if success:
     cv2.destroyAllWindows()
          
     print("\nTracking objects. Please wait...")
+
+    for bbox in bounding_box_list:
+         
+        # Add tracker to the multi-object tracker
+        multi_tracker.add(tracker, frame, bbox)
+       
+    # Process the video
+    while VideoCapture.isOpened():
+         
+        # Capture one frame at a time
+        success, frame = VideoCapture.read() 
+            
+        # Do we have a video frame? If true, proceed.
+        if success:
+
+            # Update the location of the bounding boxes
+            success, bboxes = multi_tracker.update(frame)
+
+            # Draw the bounding boxes on the video frame
+            for i, bbox in enumerate(bboxes):
+                point_1 = (int(bbox[0]), int(bbox[1]))
+                point_2 = (int(bbox[0] + bbox[2]), 
+                int(bbox[1] + bbox[3]))
+                cv2.rectangle(frame, point_1, point_2, color_list[i], 5)
+                        
+            # Write the frame to the output video file
+            cv2.imshow(frame)
+
+        # No more video frames left
+        else:
+            break
+    
+    # Release the video capture object
+    videoCapture.release()
+
+    
 
 # Add some data 
 # mydata[1].update(1)
